@@ -1,0 +1,12 @@
+{
+  "description": "Unique values used as record names, descriptions and amounts in seed data and tests. None may ever appear in an outbound request body or in force-app source.",
+  "values": [
+    "CANARY-ACCT-7Q2Z",
+    "CANARY-OPP-4K9X",
+    "CANARY-DESC-M3P8",
+    "CANARY-CASE-T6W1",
+    "CANARY-NOTE-H5J2",
+    "canary.person.5r8n@example.com",
+    "987654.32"
+  ]
+}

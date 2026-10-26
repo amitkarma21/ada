@@ -1,0 +1,6 @@
+**/staticresources/**
+.sf
+.sfdx
+.verify
+node_modules
+coverage

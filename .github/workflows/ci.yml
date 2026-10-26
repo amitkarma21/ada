@@ -1,0 +1,85 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 16 * * *" # nightly, about 3 am Melbourne time
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - run: npm install --global @salesforce/cli
+      - run: sf plugins install code-analyzer
+      - run: bash scripts/verify.sh static
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: static-logs
+          path: .verify/
+          include-hidden-files: true
+
+  # Org-based tests use scratch org limits, so they run only on demand or nightly.
+  # Needs repo secrets SF_DEVHUB_USERNAME, SF_DEVHUB_CLIENT_ID, SF_DEVHUB_JWT_KEY (docs/SETUP.md §3).
+  # Runs the `unit` gate: e2e needs the self-org OAuth click, so it runs locally.
+  org:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    needs: static
+    runs-on: ubuntu-latest
+    env:
+      ADA_ORG: ada-ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - run: npm install --global @salesforce/cli
+      - run: sf plugins install code-analyzer
+      - name: Log in to Dev Hub
+        env:
+          SF_DEVHUB_JWT_KEY: ${{ secrets.SF_DEVHUB_JWT_KEY }}
+        run: |
+          echo "$SF_DEVHUB_JWT_KEY" > server.key
+          sf org login jwt --username "${{ secrets.SF_DEVHUB_USERNAME }}" \
+            --client-id "${{ secrets.SF_DEVHUB_CLIENT_ID }}" --jwt-key-file server.key \
+            --set-default-dev-hub --alias ada-devhub
+          rm -f server.key
+      - run: bash scripts/new-scratch-org.sh ada-ci 1
+      - run: bash scripts/verify.sh unit
+      - name: Delete scratch org
+        if: always()
+        run: sf org delete scratch --target-org ada-ci --no-prompt || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: org-logs
+          path: .verify/
+          include-hidden-files: true

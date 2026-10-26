@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "description": "Golden set for the classifier. 'captured' cases get their message from scripts/e2e/capture-golden.mjs (step 0.3); 'manual' cases are filled by hand with the exact wording seen in the org; 'synthetic' cases are made up and must classify as UNKNOWN.",
+  "capturedAt": null,
+  "cases": [
+    {
+      "id": "opp-closedate-past",
+      "object": "Opportunity",
+      "message": "",
+      "source": "captured",
+      "expected": { "type": "VALIDATION_RULE", "componentApiName": "ADA_Demo_CloseDate_Future" }
+    },
+    {
+      "id": "opp-large-deal-description",
+      "object": "Opportunity",
+      "message": "",
+      "source": "captured",
+      "expected": { "type": "VALIDATION_RULE", "componentApiName": "ADA_Demo_Large_Deal_Description" }
+    },
+    {
+      "id": "case-close-reason",
+      "object": "Case",
+      "message": "",
+      "source": "captured",
+      "expected": { "type": "VALIDATION_RULE", "componentApiName": "ADA_Demo_Close_Reason" }
+    },
+    {
+      "id": "case-flow-escalated-priority",
+      "object": "Case",
+      "message": "",
+      "source": "captured",
+      "expected": { "type": "FLOW", "componentApiName": null }
+    },
+    {
+      "id": "case-trigger-web-origin",
+      "object": "Case",
+      "message": "",
+      "source": "captured",
+      "expected": { "type": "APEX", "componentApiName": null }
+    },
+    {
+      "id": "account-duplicate",
+      "object": "Account",
+      "message": "",
+      "source": "captured",
+      "expected": { "type": "DUPLICATE_RULE", "componentApiName": null }
+    },
+    {
+      "id": "opp-required-field",
+      "object": "Opportunity",
+      "message": "",
+      "source": "captured",
+      "expected": { "type": "REQUIRED_FIELD", "componentApiName": null }
+    },
+    {
+      "id": "opp-no-field-access",
+      "object": "Opportunity",
+      "message": "",
+      "source": "manual",
+      "expected": { "type": "ACCESS", "componentApiName": null }
+    },
+    {
+      "id": "unknown-made-up-1",
+      "object": "Opportunity",
+      "message": "Something unexpected went wrong while processing your request.",
+      "source": "synthetic",
+      "expected": { "type": "UNKNOWN", "componentApiName": null }
+    },
+    {
+      "id": "unknown-made-up-2",
+      "object": "Case",
+      "message": "The quarterly forecast must be approved before Friday.",
+      "source": "synthetic",
+      "expected": { "type": "UNKNOWN", "componentApiName": null }
+    },
+    {
+      "id": "unknown-made-up-3",
+      "object": "Opportunity",
+      "message": "Please contact your administrator.",
+      "source": "synthetic",
+      "expected": { "type": "UNKNOWN", "componentApiName": null }
+    }
+  ]
+}

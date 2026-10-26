@@ -1,0 +1,16 @@
+# Salesforce CLI
+.sf/
+.sfdx/
+.localdevserver/
+
+# Build and test output
+node_modules/
+coverage/
+.verify/
+
+# Secrets — never commit
+*.key
+*.pem
+.env
+.env.*
+server.key
