@@ -6,7 +6,7 @@ List<String> expected = new List<String>{
 try {
   List<Map<String, Object>> rows = new ADA_ToolingClient()
     .query(
-      'SELECT Id, ValidationName FROM ValidationRule WHERE EntityDefinition.QualifiedApiName = \'Opportunity\''
+      'SELECT Id, ValidationName FROM ValidationRule WHERE ValidationName LIKE \'ADA_Demo%\''
     );
   Set<String> found = new Set<String>();
   for (Map<String, Object> row : rows) {
@@ -21,9 +21,15 @@ try {
   List<String> names = new List<String>(found);
   names.sort();
   if (missing.isEmpty()) {
-    System.debug(LoggingLevel.ERROR, 'ADA_TOOLING_OK|' + String.join(names, ','));
+    System.debug(
+      LoggingLevel.ERROR,
+      'ADA_TOOLING_OK|' + String.join(names, ',')
+    );
   } else {
-    System.debug(LoggingLevel.ERROR, 'ADA_TOOLING_FAIL|missing ' + String.join(missing, ','));
+    System.debug(
+      LoggingLevel.ERROR,
+      'ADA_TOOLING_FAIL|missing ' + String.join(missing, ',')
+    );
   }
 } catch (Exception e) {
   System.debug(LoggingLevel.ERROR, 'ADA_TOOLING_FAIL|' + e.getMessage());

@@ -11,7 +11,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 0.2 | Project scaffold | | static | DONE | static PASS `.verify/20261027-220419-static` (code-analyzer skipped: no package source yet). `ada-dev` scratch org created by `scripts/new-scratch-org.sh`. CI run 40493548233 green. |
 | 0.3 | Demo org and golden set | | unit | DONE | unit PASS `.verify/20261027-222502-unit` on a fresh `ada-dev` built by `scripts/new-scratch-org.sh`; 4 Apex tests pass; no package classes yet so coverage n/a. Golden set: 8 real cases (VALIDATION_RULE x3, FLOW, APEX, DUPLICATE_RULE, REQUIRED_FIELD, ACCESS) + 3 UNKNOWN. CI run 40496190202 green. |
 | 1.1 | Data model and settings | security | unit | DONE | unit PASS `.verify/20261027-225529-unit`: 22 Apex tests pass, package coverage 100% (3 classes with executable lines), Code Analyzer clean. CI run 40499960671 green. |
-| 1.2 | Self-org Tooling API access | HUMAN, security | unit + smoke | CODE DONE, AWAITING HUMAN | unit gate PASS `.verify/20261027-230708-unit` (38 tests, 97.7%); smoke pending |
+| 1.2 | Self-org Tooling API access | HUMAN, security | unit + smoke | DONE | unit PASS `.verify/20261028-090656-unit` (38 tests, 97.7%, dev org). Smoke PASS in dev org: `ADA_TOOLING_OK: ADA_Demo_CloseDate_Future,ADA_Demo_Close_Reason,ADA_Demo_Large_Deal_Description`. |
 | 1.3 | Metadata index | security | e2e | TODO | |
 | 1.4 | Classifier and matchers | | e2e | TODO | |
 | 1.5 | PII gate, HTTP gateway, payload builders | security | unit | TODO | |
@@ -42,13 +42,15 @@ Plan:
 - `setup/self-tooling-template/` (outside the package directories): AuthProvider template, External Credential, Named Credential, access permission set, plus `scripts/setup-self-tooling.sh` that takes the connected app key/secret from a hidden prompt (never written to the repo).
 - `scripts/e2e/tooling-smoke.apex` prints `ADA_TOOLING_OK|<rule names>` for Opportunity.
 - HUMAN: create the connected app, run the script, click Authenticate. Stop there and list exact actions.
-Result so far: code and tests done, unit gate PASS (38 tests, 97.7% coverage, lowest class ADA_ToolingClient 96%). Setup deploy validated against ada-dev with dummy key/secret (4 components created, permission set assigned). Smoke output still to be pasted after the HUMAN steps.
+Result so far: code and tests done, unit gate PASS (38 tests, 97.7% coverage, lowest class ADA_ToolingClient 96%). Setup deploy validated against ada-dev with dummy key/secret (4 components created, permission set assigned). Smoke PASS after the human Authenticate in the dev org.
 Deviations / findings:
 - Gateway method is `execute`, not `send`, because the invariant grep `\.send\(` flags every caller.
 - ExternalCredential: `parameterGroup` is allowed only on NamedPrincipal/PerUserPrincipal parameters (and Scope), not on the AuthProvider parameter.
 - Setup templates live in `setup/` (a non-default package directory, never deployed by the gate or packaged); rendered copies go to git-ignored `setup/rendered/` and are deleted after deploy.
 - Dummy-credential AuthProvider blocks a redeploy with a real secret ("Consumer Secret update is not allowed"): delete NamedCredential, ExternalCredential, AuthProvider (in that order) first. `sf project delete source` also deletes the local template files; restore them with `git checkout`.
 - External Client Apps lock PKCE on and this org cannot create classic Connected Apps, so the AuthProvider template sets `isPkceEnabled` true (fixes "missing required code challenge").
+- The smoke script first queried only Opportunity rules but `ADA_Demo_Close_Reason` is a Case rule; it now queries `ValidationName LIKE 'ADA_Demo%'`.
+- `redirect_uri_mismatch` came from the External Client App's callback URL not matching the dev org's; fixed on the app, no code change.
 - The first Authenticate attempt targeted a scratch org; the work moved to the dev org (D-12), where the credential must be set up again.
 Self-review (security): only `callout:` endpoints pass the gateway; no `getSessionId`; `nextRecordsUrl` must start with `/services/data/`; page cap 25; error messages never echo the response body except the 400 errorCode/message; key/secret come from a hidden prompt or env and never reach the repo.
 Reviewers: step-reviewer / security-reviewer unavailable (model 404), self-reviewed.
