@@ -10,8 +10,8 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 0.1 | Accounts and tools | HUMAN | doctor | DONE | doctor PASS, `.verify/20261026-162142-doctor`. Groq key, Azure DevOps and ServiceNow deferred (needed from 1.6 / phase 2). Dev Hub alias `ada-devhub` -> AdminBot username. |
 | 0.2 | Project scaffold | | static | DONE | static PASS `.verify/20261027-220419-static` (code-analyzer skipped: no package source yet). `ada-dev` scratch org created by `scripts/new-scratch-org.sh`. CI run 40493548233 green. |
 | 0.3 | Demo org and golden set | | unit | DONE | unit PASS `.verify/20261027-222502-unit` on a fresh `ada-dev` built by `scripts/new-scratch-org.sh`; 4 Apex tests pass; no package classes yet so coverage n/a. Golden set: 8 real cases (VALIDATION_RULE x3, FLOW, APEX, DUPLICATE_RULE, REQUIRED_FIELD, ACCESS) + 3 UNKNOWN. CI run 40496190202 green. |
-| 1.1 | Data model and settings | security | unit | DONE | unit PASS `.verify/20261027-225529-unit`: 22 Apex tests pass, package coverage 100% (3 classes with executable lines), Code Analyzer clean. |
-| 1.2 | Self-org Tooling API access | HUMAN, security | unit + smoke | TODO | |
+| 1.1 | Data model and settings | security | unit | DONE | unit PASS `.verify/20261027-225529-unit`: 22 Apex tests pass, package coverage 100% (3 classes with executable lines), Code Analyzer clean. CI run 40499960671 green. |
+| 1.2 | Self-org Tooling API access | HUMAN, security | unit + smoke | CODE DONE, AWAITING HUMAN | unit gate PASS `.verify/20261027-230708-unit` (38 tests, 97.7%); smoke pending |
 | 1.3 | Metadata index | security | e2e | TODO | |
 | 1.4 | Classifier and matchers | | e2e | TODO | |
 | 1.5 | PII gate, HTTP gateway, payload builders | security | unit | TODO | |
@@ -30,6 +30,23 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 ## Step notes
 
 <!-- For each step: plan bullets, attempts, deviations, reviewer verdicts. Newest first. -->
+
+### 1.2 Self-org Tooling API access
+Plan:
+- `ADA_HttpGateway` (minimal now: only `callout:` endpoints allowed; PII last-line check is added in 1.5) is the only class that sends HTTP, so `ADA_ToolingClient` goes through it.
+- `ADA_ToolingClient.query(soql)` over `callout:ADA_Self_Tooling`, follows `nextRecordsUrl` (only `/services/data/` paths, page cap), clear errors: 401 -> "Run the ADA setup to reconnect", 400 -> API error message, 5xx, malformed JSON. No `getSessionId`.
+- Mocked unit tests: success, paging, 401, 400, 500, malformed JSON, bad next URL, gateway rejects non-Named-Credential endpoints.
+- `setup/self-tooling-template/` (outside the package directories): AuthProvider template, External Credential, Named Credential, access permission set, plus `scripts/setup-self-tooling.sh` that takes the connected app key/secret from a hidden prompt (never written to the repo).
+- `scripts/e2e/tooling-smoke.apex` prints `ADA_TOOLING_OK|<rule names>` for Opportunity.
+- HUMAN: create the connected app, run the script, click Authenticate. Stop there and list exact actions.
+Result so far: code and tests done, unit gate PASS (38 tests, 97.7% coverage, lowest class ADA_ToolingClient 96%). Setup deploy validated against ada-dev with dummy key/secret (4 components created, permission set assigned). Smoke output still to be pasted after the HUMAN steps.
+Deviations / findings:
+- Gateway method is `execute`, not `send`, because the invariant grep `\.send\(` flags every caller.
+- ExternalCredential: `parameterGroup` is allowed only on NamedPrincipal/PerUserPrincipal parameters (and Scope), not on the AuthProvider parameter.
+- Setup templates live in `setup/` (a non-default package directory, never deployed by the gate or packaged); rendered copies go to git-ignored `setup/rendered/` and are deleted after deploy.
+- The dummy-credential AuthProvider now exists in ada-dev; re-running the script with the real key/secret overwrites it.
+Self-review (security): only `callout:` endpoints pass the gateway; no `getSessionId`; `nextRecordsUrl` must start with `/services/data/`; page cap 25; error messages never echo the response body except the 400 errorCode/message; key/secret come from a hidden prompt or env and never reach the repo.
+Reviewers: step-reviewer / security-reviewer unavailable (model 404), self-reviewed.
 
 ### 1.1 Data model and settings
 Result: DONE. Objects, fields, three CMDTs (+ `Default` setting record, Template provider), `ADA_User` / `ADA_Admin` permission sets, enums `ADA_ErrorType` / `ADA_SuggestedAction`, DTOs `ADA_Diagnosis` / `ADA_Explanation` / `ADA_ActionResult`, interfaces `ADA_ILlmProvider` / `ADA_IMetadataIndexStore` / `ADA_IActionTarget`. Tests: `ADA_PermissionsTest` (runAs), `ADA_SchemaTest` (index holds only the ARCHITECTURE §1 fields, no lookups, idempotency key unique), `ADA_SettingTest`, `ADA_DtoTest`.

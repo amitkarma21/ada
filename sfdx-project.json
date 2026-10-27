@@ -7,6 +7,10 @@
     {
       "path": "demo-app",
       "default": false
+    },
+    {
+      "path": "setup",
+      "default": false
     }
   ],
   "name": "ada",

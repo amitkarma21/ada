@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AuthProvider xmlns="http://soap.sforce.com/2006/04/metadata">
+    <authorizeUrl>__ORG_URL__/services/oauth2/authorize</authorizeUrl>
+    <consumerKey>__CONSUMER_KEY__</consumerKey>
+    <consumerSecret>__CONSUMER_SECRET__</consumerSecret>
+    <defaultScopes>api refresh_token</defaultScopes>
+    <friendlyName>ADA Self Tooling Provider</friendlyName>
+    <includeOrgIdInIdentifier>false</includeOrgIdInIdentifier>
+    <providerType>Salesforce</providerType>
+    <sendAccessTokenInHeader>true</sendAccessTokenInHeader>
+    <sendClientCredentialsInHeader>false</sendClientCredentialsInHeader>
+    <sendSecretInApis>true</sendSecretInApis>
+    <tokenUrl>__ORG_URL__/services/oauth2/token</tokenUrl>
+    <userInfoUrl>__ORG_URL__/services/oauth2/userinfo</userInfoUrl>
+</AuthProvider>

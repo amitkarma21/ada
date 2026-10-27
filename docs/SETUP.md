@@ -66,8 +66,14 @@ and allows human review, which conflicts with this app's promise. See `docs/DECI
 
 Each new scratch org (7-day lifetime) needs:
 
-1. Authorise `ADA_Self_Tooling`: Setup → Named Credentials → External Credentials →
-   `ADA_Self_Tooling` → principal → Authenticate, and log in as the scratch org admin.
+1. Self-org Tooling API access:
+   1. `scripts/setup-self-tooling.sh <org> --callback` prints the callback URL.
+   2. In the org create a Connected App (Setup → App Manager → New Connected App) with OAuth
+      enabled, that callback URL and scopes `api` and `refresh_token`. Copy its consumer key and secret.
+   3. `scripts/setup-self-tooling.sh <org>` and paste the key and secret at the hidden prompts.
+   4. Authorise `ADA_Self_Tooling`: Setup → Named Credentials → External Credentials →
+      `ADA Self Tooling` → Principals → `ADA_Tooling_Principal` → Authenticate, as the scratch org admin.
+   5. Check: `node scripts/lib/run-apex-markers.mjs --org <org> --file scripts/e2e/tooling-smoke.apex --expect ADA_TOOLING_OK --fail-on ADA_TOOLING_FAIL`.
 2. Paste the Groq key and (when needed) the Azure DevOps PAT into their External Credentials.
 3. Assign `ADA_Admin` to yourself and `ADA_User` to the demo restricted user.
 4. For phase 3: Setup → Deliverability → All email; enable email approval response.
