@@ -8,7 +8,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | Step | Title | Tags | Gate | Status | Evidence (log, tests, coverage) |
 | --- | --- | --- | --- | --- | --- |
 | 0.1 | Accounts and tools | HUMAN | doctor | DONE | doctor PASS, `.verify/20261026-162142-doctor`. Groq key, Azure DevOps and ServiceNow deferred (needed from 1.6 / phase 2). Dev Hub alias `ada-devhub` -> AdminBot username. |
-| 0.2 | Project scaffold | | static | IN PROGRESS | static PASS `.verify/20261027-220419-static` (code-analyzer skipped: no package source yet). `ada-dev` scratch org created by `scripts/new-scratch-org.sh`. Waiting on CI. |
+| 0.2 | Project scaffold | | static | DONE | static PASS `.verify/20261027-220419-static` (code-analyzer skipped: no package source yet). `ada-dev` scratch org created by `scripts/new-scratch-org.sh`. CI run 40493548233 green. |
 | 0.3 | Demo org and golden set | | unit | TODO | |
 | 1.1 | Data model and settings | security | unit | TODO | |
 | 1.2 | Self-org Tooling API access | HUMAN, security | unit + smoke | TODO | |
