@@ -35,7 +35,7 @@ User ── adaHelpPanel (LWC, utility bar)
 
 | Name | Calls | Auth during build | Auth for customers |
 | --- | --- | --- | --- |
-| `ADA_Self_Tooling` | The org's own Tooling API | OAuth via a Salesforce auth provider (one click per scratch org) | Same, set up by the install wizard |
+| `ADA_Self_Tooling` | The org's own Tooling API | OAuth via a Salesforce auth provider (one click per org) | Same, set up by the install wizard |
 | `ADA_LLM` | OpenAI-compatible chat completions endpoint | Groq API key as a custom header | Customer's own provider key |
 | `ADA_AzureDevOps` | `https://dev.azure.com/{org}` REST API | Personal access token | Per-user OAuth (Entra ID) before listing |
 | `ADA_ServiceNow` | ServiceNow Service Catalog API (optional) | Basic auth on the free developer instance | OAuth |
@@ -189,7 +189,7 @@ anyway).
 force-app/main/default/     the managed package (ADA_*)
 demo-app/main/default/      unpackaged demo setup: validation rules, flow, trigger, test users
 config/                     scratch org definition
-scripts/                    verify.sh, new-scratch-org.sh, lib/, e2e/
+scripts/                    verify.sh, setup-dev-org.sh, new-scratch-org.sh, lib/, e2e/
 test-data/                  golden-errors.json, canary values
 docs/                       plan, architecture, tests, setup, decisions, reports/
 .claude/                    agents and skills that run the build loop

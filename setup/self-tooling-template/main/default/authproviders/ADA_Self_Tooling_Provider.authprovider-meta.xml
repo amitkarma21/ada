@@ -6,6 +6,7 @@
     <defaultScopes>api refresh_token</defaultScopes>
     <friendlyName>ADA Self Tooling Provider</friendlyName>
     <includeOrgIdInIdentifier>false</includeOrgIdInIdentifier>
+    <isPkceEnabled>true</isPkceEnabled>
     <providerType>Salesforce</providerType>
     <sendAccessTokenInHeader>true</sendAccessTokenInHeader>
     <sendClientCredentialsInHeader>false</sendClientCredentialsInHeader>

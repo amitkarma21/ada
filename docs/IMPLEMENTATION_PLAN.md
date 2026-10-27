@@ -14,8 +14,8 @@ Gates, from cheapest to most complete:
 | --- | --- | --- |
 | `doctor` | Tool versions, Dev Hub auth, GitHub CLI auth | Nothing deployed |
 | `static` | Prettier, ESLint, LWC Jest, Code Analyzer, data-file checks, egress grep | No org |
-| `unit` | `static` + deploy both package dirs to the scratch org + all Apex tests + coverage ≥ 85% | Scratch org |
-| `e2e` | `unit` + golden-set accuracy + index smoke | Scratch org with index built |
+| `unit` | `static` + deploy both package dirs to the dev org (D-12) + all Apex tests + coverage ≥ 85% | Dev org (`ada-dev`) |
+| `e2e` | `unit` + golden-set accuracy + index smoke | Dev org with index built |
 | `live` | `e2e` + real calls to Groq / Azure DevOps / ServiceNow | `LIVE=1` and credentials set up |
 | `package` | Package version build + install into a fresh scratch org + smoke | Namespace (phase 4) |
 
@@ -46,7 +46,7 @@ scripts. This step makes them work:
 **Acceptance:**
 - `npm ci` works; `scripts/verify.sh static` passes on the empty project.
 - CI runs on push and is green.
-- `scripts/new-scratch-org.sh` creates `ada-dev` and deploys both directories.
+- `scripts/setup-dev-org.sh` deploys both directories to the dev org `ada-dev`, assigns permission sets and seeds (re-runnable).
 **Gate:** `static`, then CI green.
 
 ### 0.3 Demo org and golden set
@@ -70,13 +70,13 @@ In `demo-app/` only (never `force-app/`):
   the org (verify with an Apex test using `System.runAs`).
 
 **Acceptance:**
-- Demo deploys to a fresh scratch org with `scripts/new-scratch-org.sh`.
+- Demo deploys to the dev org with `scripts/setup-dev-org.sh`.
 - Capture produces at least 7 distinct cases covering every type in ARCHITECTURE §3 except
   Unknown; plus 3 Unknown cases (made-up messages).
 - `test-data/golden-errors.json` and `test-data/canaries.json` committed; no canary value
   appears anywhere in `force-app/`.
 **Gate:** `unit`.
-**Phase 0 gate:** `/phase-gate 0` — fresh scratch org, `unit`, report.
+**Phase 0 gate:** `/phase-gate 0` — dev org redeploy with `scripts/setup-dev-org.sh`, `unit`, report.
 
 ---
 
@@ -96,7 +96,7 @@ Objects, fields, custom metadata types and default records, permission sets `ADA
 ### 1.2 Self-org Tooling API access — HUMAN + security
 Package an auth provider, External Credential and Named Credential `ADA_Self_Tooling`.
 `ADA_ToolingClient.query(soql)` with paging and clear errors (401 → "Run the ADA setup to
-reconnect"). HUMAN: authorise the credential once in the scratch org (instructions in
+reconnect"). HUMAN: authorise the credential once in the dev org (instructions in
 `docs/SETUP.md` §7). `scripts/e2e/tooling-smoke.apex` lists validation rules on Opportunity.
 **Acceptance:**
 - Unit tests (mocked) for success, paging, 401, 500, malformed JSON.
@@ -111,7 +111,7 @@ rules, record-triggered flows (custom error messages where readable), trigger/cl
 literals. Incremental on last-modified date. List IDs first, then one metadata callout per rule,
 chained Queueables under the callout limit.
 **Acceptance:**
-- In the scratch org, the index has a row for every demo rule, flow and trigger.
+- In the dev org, the index has a row for every demo rule, flow and trigger.
 - `ADA_FormulaMasker` test: `Account.Name = 'Acme Pty Ltd' && OwnerId = '005000000000001AAA'`
   becomes `Account.Name = 'TEXT_1' && OwnerId = 'ID_1'`.
 - A mocked run over 150 rules chains Queueables and never exceeds the callout limit.
@@ -128,7 +128,7 @@ no callouts).
 - Unit tests per matcher: positive, negative, near-miss, two-candidate tie (confidence drops).
 - Golden set: accuracy ≥ 95%, and **zero** confident wrong answers (wrong type or wrong
   component at or above the threshold). Unknown cases return Unknown.
-- Diagnosis of one error completes in under 500 ms of CPU in the scratch org (log it).
+- Diagnosis of one error completes in under 500 ms of CPU in the dev org (log it).
 **Gate:** `e2e`.
 
 ### 1.5 PII gate, HTTP gateway, payload builders — security
@@ -176,10 +176,10 @@ rendered as text only.
 **Acceptance:**
 - Jest tests for every state, for keyboard use and labels, and that an explanation containing
   `<img src=x onerror=...>` renders as text.
-- Manual demo (`docs/reports/demo-phase-1.md` checklist) passes in the scratch org.
+- Manual demo (`docs/reports/demo-phase-1.md` checklist) passes in the dev org.
 **Gate:** `unit`.
 
-**Phase 1 gate:** `/phase-gate 1` on a fresh scratch org with gate `e2e`. Demo: open an
+**Phase 1 gate:** `/phase-gate 1` on the dev org (redeployed with `scripts/setup-dev-org.sh`) with gate `e2e`. Demo: open an
 Opportunity, break the close-date rule, paste the error, get the explanation and fix steps, mark
 it solved.
 

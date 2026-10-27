@@ -66,3 +66,14 @@ AppExchange (D-01 holds). The extension would have held the user's Salesforce se
 proxy or per-user LLM keys. Ideas worth reusing later: showing the user the exact outbound
 payload before sending, and evaluating a rule's formula locally so only derived facts go to the
 LLM (a Stage 2 candidate, already listed as "record-specific formula evaluation").
+
+## D-12 Build and test in the Developer Edition org, not scratch orgs — ACCEPTED
+Decided 2026-10-28 at the human's request after repeated scratch-org friction (locked PKCE on
+External Client Apps, no classic connected apps, 7-day expiry forcing a repeat of the OAuth
+click). `ada-dev` is now an alias for the Developer Edition org that is also the Dev Hub. The
+`unit` and `e2e` gates deploy `force-app` and `demo-app` there and refuse to run unless the org's
+`OrganizationType` is `Developer Edition`. Costs accepted: demo metadata (Case flow and trigger,
+validation rules, duplicate rule) is live in that org; there is no clean-slate rebuild between
+runs (the seed script is re-runnable, deploys are idempotent); phase-gate "fresh org" runs need a
+manual reset. Scratch orgs remain only for the CI org job and the phase 4 `package` gate, which
+must install into an empty org.

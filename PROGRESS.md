@@ -31,6 +31,9 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 
 <!-- For each step: plan bullets, attempts, deviations, reviewer verdicts. Newest first. -->
 
+### Process change 2026-10-28: dev org instead of scratch orgs (D-12)
+Human request after repeated scratch-org friction. `ada-dev` is now an alias for the Developer Edition org that is also the Dev Hub (`ada-devhub`); the old scratch org was deleted. `scripts/setup-dev-org.sh` deploys, assigns permission sets and seeds (re-runnable). `verify.sh` `require_org` refuses any org whose `OrganizationType` is not Developer Edition. `unit` PASS against the dev org: `.verify/20261028-090656-unit` (38 tests, 97.7%). Scratch orgs stay only for the optional CI org job and the phase 4 `package` gate. Demo metadata (Case flow and trigger, validation rules, duplicate rule) is now live in the dev org.
+
 ### 1.2 Self-org Tooling API access
 Plan:
 - `ADA_HttpGateway` (minimal now: only `callout:` endpoints allowed; PII last-line check is added in 1.5) is the only class that sends HTTP, so `ADA_ToolingClient` goes through it.
@@ -44,7 +47,9 @@ Deviations / findings:
 - Gateway method is `execute`, not `send`, because the invariant grep `\.send\(` flags every caller.
 - ExternalCredential: `parameterGroup` is allowed only on NamedPrincipal/PerUserPrincipal parameters (and Scope), not on the AuthProvider parameter.
 - Setup templates live in `setup/` (a non-default package directory, never deployed by the gate or packaged); rendered copies go to git-ignored `setup/rendered/` and are deleted after deploy.
-- The dummy-credential AuthProvider now exists in ada-dev; re-running the script with the real key/secret overwrites it.
+- Dummy-credential AuthProvider blocks a redeploy with a real secret ("Consumer Secret update is not allowed"): delete NamedCredential, ExternalCredential, AuthProvider (in that order) first. `sf project delete source` also deletes the local template files; restore them with `git checkout`.
+- External Client Apps lock PKCE on and this org cannot create classic Connected Apps, so the AuthProvider template sets `isPkceEnabled` true (fixes "missing required code challenge").
+- The first Authenticate attempt targeted a scratch org; the work moved to the dev org (D-12), where the credential must be set up again.
 Self-review (security): only `callout:` endpoints pass the gateway; no `getSessionId`; `nextRecordsUrl` must start with `/services/data/`; page cap 25; error messages never echo the response body except the 400 errorCode/message; key/secret come from a hidden prompt or env and never reach the repo.
 Reviewers: step-reviewer / security-reviewer unavailable (model 404), self-reviewed.
 

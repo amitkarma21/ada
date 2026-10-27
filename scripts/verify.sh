@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ADA quality gates. Usage: scripts/verify.sh <doctor|static|unit|e2e|live|package>
 # Each gate includes the ones before it (static < unit < e2e < live). Logs: .verify/<ts>-<gate>/
-# Env: ADA_ORG (default ada-dev), ADA_DEVHUB (default ada-devhub), LIVE=1 for the live gate,
+# Env: ADA_ORG (default ada-dev = the Developer Edition dev org), ADA_DEVHUB (default ada-devhub), LIVE=1 for the live gate,
 #      ADA_MIN_ORG_COVERAGE (85), ADA_MIN_CLASS_COVERAGE (75), ADA_MIN_GOLDEN_ACCURACY (0.95).
 set -Eeuo pipefail
 
@@ -57,7 +57,11 @@ has_files() { [[ -d "$1" ]] && find "$1" -type f -name "$2" ! -name .gitkeep | g
 
 require_org() {
   if ! sf org display --target-org "$ORG" >/dev/null 2>&1; then
-    echo "Org '${ORG}' not found. Run scripts/new-scratch-org.sh first (or set ADA_ORG)."
+    echo "Org '${ORG}' not found. Run: sf alias set ada-dev=<dev org username> (or set ADA_ORG)."
+    exit 1
+  fi
+  if [[ "$(sf data query --target-org "$ORG" --query "SELECT OrganizationType FROM Organization" --json 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).result.records[0].OrganizationType)}catch(e){console.log('unknown')}})")" != "Developer Edition" ]]; then
+    echo "Org '${ORG}' must be a Developer Edition org; the gates deploy metadata and seed data."
     exit 1
   fi
 }

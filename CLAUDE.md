@@ -78,7 +78,8 @@ The `/next-step` skill runs this loop; follow it even when not invoked.
 | Unit + golden-set accuracy + egress canary | `scripts/verify.sh e2e` |
 | E2E + live calls to Groq / Azure DevOps / ServiceNow | `LIVE=1 scripts/verify.sh live` |
 | Package version + install smoke test | `scripts/verify.sh package` |
-| New scratch org | `scripts/new-scratch-org.sh` |
+| Deploy + seed the dev org | `scripts/setup-dev-org.sh` |
+| New scratch org (CI and phase 4 install test only) | `scripts/new-scratch-org.sh` |
 
 ### Environment notes (this machine)
 
@@ -88,7 +89,10 @@ The `/next-step` skill runs this loop; follow it even when not invoked.
 - Local npm 10 crashes resolving `@salesforce/sfdx-lwc-jest`. Install packages with
   `npx -y npm@11 install --save-dev <pkg>`; CI uses npm 11.
 - Aliases: `ada-devhub` must point at the Dev Hub username (alias chains do not resolve);
-  `ada-dev` is the scratch org. Recreate it with `scripts/new-scratch-org.sh`.
+  `ada-dev` is the dev org (the same Developer Edition org as the Dev Hub, D-12), also pointed
+  at the Dev Hub username. Gates and quick commands target it. Always pass `--target-org`: this
+  machine has other client orgs connected, and nothing here may touch them. Redeploy and
+  reseed with `scripts/setup-dev-org.sh`.
 - Format before gating: `npm run prettier`. The `static` gate fails on unformatted files.
 - Quick deploy: `sf project deploy start --source-dir force-app --target-org ada-dev --wait 30`.
   Quick test: `sf apex run test --class-names <Class> --result-format human --wait 10 -o ada-dev`.

@@ -68,7 +68,7 @@ Captured from the demo org in step 0.3, so messages are the platform's real word
 }
 ```
 
-`run-golden.mjs` sends each message through `ADA_DiagnosisService` in the scratch org (anonymous
+`run-golden.mjs` sends each message through `ADA_DiagnosisService` in the dev org (anonymous
 Apex that prints `ADA_RESULT|<json>` lines), compares type and component, and prints accuracy,
 confident-wrong count and a per-case table. Add a case to the golden set for every bug found.
 
@@ -90,7 +90,8 @@ they're easy to close). Free-tier rate limits: run live tests at phase gates, no
 | Trigger | Jobs |
 | --- | --- |
 | Every push and pull request | `static` (no org, no limits used) |
-| Manual (`workflow_dispatch`) and nightly | `unit` and `e2e` on a new scratch org, deleted afterwards |
+| Manual (`workflow_dispatch`) and nightly | `unit` on a new scratch org, deleted afterwards (optional) |
 
-Scratch orgs from a Developer Edition Dev Hub have small daily and active limits, so the build
-reuses one 7-day scratch org locally and CI only creates one on manual or nightly runs.
+Local `unit` and `e2e` run against the Developer Edition dev org (`ada-dev`, D-12), not a scratch
+org. CI only creates a scratch org on manual or nightly runs, and the phase 4 `package` gate
+installs into a fresh one.

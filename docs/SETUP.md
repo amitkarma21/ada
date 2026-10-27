@@ -52,7 +52,7 @@ and allows human review, which conflicts with this app's promise. See `docs/DECI
 1. Create a free Azure DevOps organisation at dev.azure.com (free for the first 5 Basic users).
 2. Create a project `ADA-Test` using the Basic or Agile process.
 3. Create a personal access token with **Work Items: Read & write** only, short expiry.
-4. Store it in the `ADA_AzureDevOps` External Credential in the scratch org (step 2.1).
+4. Store it in the `ADA_AzureDevOps` External Credential in the dev org (step 2.1).
 
 ## 6. ServiceNow developer instance (optional fulfilment target)
 
@@ -62,20 +62,22 @@ and allows human review, which conflicts with this app's promise. See `docs/DECI
 3. Use a dedicated integration user with only the roles needed to order that item.
 4. Instances sleep when idle and are reclaimed after long inactivity; wake it before live tests.
 
-## 7. Per-scratch-org human steps
+## 7. Dev org human steps
 
-Each new scratch org (7-day lifetime) needs:
+Building happens in the Developer Edition org (alias `ada-dev`, same org as the Dev Hub, D-12).
+Once per org (and again if the org is ever reset):
 
 1. Self-org Tooling API access:
    1. `scripts/setup-self-tooling.sh <org> --callback` prints the callback URL.
-   2. In the org create a Connected App (Setup → App Manager → New Connected App) with OAuth
-      enabled, that callback URL and scopes `api` and `refresh_token`. Copy its consumer key and secret.
+   2. In the org create an External Client App (Setup → External Client App Manager → New) with
+      OAuth enabled, that callback URL and scopes `api` and `refresh_token`. Leave PKCE on (it
+      is locked on; the provider template sends PKCE). Copy its consumer key and secret.
    3. `scripts/setup-self-tooling.sh <org>` and paste the key and secret at the hidden prompts.
    4. Authorise `ADA_Self_Tooling`: Setup → Named Credentials → External Credentials →
-      `ADA Self Tooling` → Principals → `ADA_Tooling_Principal` → Authenticate, as the scratch org admin.
+      `ADA Self Tooling` → Principals → `ADA_Tooling_Principal` → Authenticate, as the org admin.
    5. Check: `node scripts/lib/run-apex-markers.mjs --org <org> --file scripts/e2e/tooling-smoke.apex --expect ADA_TOOLING_OK --fail-on ADA_TOOLING_FAIL`.
 2. Paste the Groq key and (when needed) the Azure DevOps PAT into their External Credentials.
 3. Assign `ADA_Admin` to yourself and `ADA_User` to the demo restricted user.
 4. For phase 3: Setup → Deliverability → All email; enable email approval response.
 
-`scripts/new-scratch-org.sh` prints this checklist at the end.
+`scripts/setup-dev-org.sh` deploys, seeds and prints this checklist at the end.
