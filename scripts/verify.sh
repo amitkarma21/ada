@@ -53,7 +53,7 @@ run() {
 
 skip() { echo "▷ $1 — skipped: $2"; SKIPPED+=("$1"); }
 
-has_files() { [[ -d "$1" ]] && find "$1" -type f -name "$2" | grep -q .; }
+has_files() { [[ -d "$1" ]] && find "$1" -type f -name "$2" ! -name .gitkeep | grep -q .; }
 
 require_org() {
   if ! sf org display --target-org "$ORG" >/dev/null 2>&1; then
@@ -78,7 +78,7 @@ gate_static() {
     "force-app/**/*.{cls,trigger,js,html,css,json,xml}" \
     "demo-app/**/*.{cls,trigger,js,html,css,json,xml}"
   run eslint npm run --silent lint
-  run lwc-jest npm run --silent test:unit -- --passWithNoTests
+  run lwc-jest npm run --silent test:unit -- -- --passWithNoTests
   run invariant-checks bash scripts/lib/static-checks.sh
   if has_files force-app "*.cls" || has_files force-app "*.js"; then
     run code-analyzer sf code-analyzer run --workspace force-app --rule-selector Recommended \

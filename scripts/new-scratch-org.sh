@@ -18,8 +18,8 @@ sf org create scratch --definition-file config/project-scratch-def.json --alias 
   --duration-days "$DAYS" --target-dev-hub "$DEVHUB" --set-default --wait 15
 
 dirs=(--source-dir force-app)
-if find demo-app -type f 2>/dev/null | grep -q .; then dirs+=(--source-dir demo-app); fi
-if find force-app -type f 2>/dev/null | grep -q .; then
+if find demo-app -type f ! -name .gitkeep 2>/dev/null | grep -q .; then dirs+=(--source-dir demo-app); fi
+if find force-app -type f ! -name .gitkeep 2>/dev/null | grep -q .; then
   echo "Deploying..."
   sf project deploy start "${dirs[@]}" --target-org "$ALIAS" --wait 30
 fi
