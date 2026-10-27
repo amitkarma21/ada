@@ -17,9 +17,11 @@ echo "Creating scratch org '${ALIAS}' for ${DAYS} days..."
 sf org create scratch --definition-file config/project-scratch-def.json --alias "$ALIAS" \
   --duration-days "$DAYS" --target-dev-hub "$DEVHUB" --set-default --wait 15
 
-dirs=(--source-dir force-app)
-if find demo-app -type f ! -name .gitkeep 2>/dev/null | grep -q .; then dirs+=(--source-dir demo-app); fi
-if find force-app -type f ! -name .gitkeep 2>/dev/null | grep -q .; then
+dirs=()
+for d in force-app demo-app; do
+  if find "$d" -type f ! -name .gitkeep 2>/dev/null | grep -q .; then dirs+=(--source-dir "$d"); fi
+done
+if [[ "${#dirs[@]}" -gt 0 ]]; then
   echo "Deploying..."
   sf project deploy start "${dirs[@]}" --target-org "$ALIAS" --wait 30
 fi
@@ -28,9 +30,27 @@ if find force-app -name "ADA_Admin.permissionset-meta.xml" | grep -q .; then
   sf org assign permset --name ADA_Admin --target-org "$ALIAS" || true
 fi
 
+if find demo-app -name "ADA_Demo_Notes_Editor.permissionset-meta.xml" | grep -q .; then
+  # New custom fields are invisible to everyone until a permission set grants them, and the seed needs it.
+  sf org assign permset --name ADA_Demo_Notes_Editor --target-org "$ALIAS" || true
+fi
+
 if [[ -f scripts/e2e/seed.apex ]]; then
   echo "Seeding demo and canary data..."
-  sf apex run --file scripts/e2e/seed.apex --target-org "$ALIAS" >/dev/null
+  # A fresh permission set assignment can take a few seconds to reach field-level security.
+  seeded=0
+  for attempt in 1 2 3 4; do
+    if sf apex run --file scripts/e2e/seed.apex --target-org "$ALIAS" >/tmp/ada-seed.log 2>&1; then
+      seeded=1
+      break
+    fi
+    sleep 5
+  done
+  if [[ "$seeded" != 1 ]]; then
+    echo "Seeding failed:"
+    tail -n 20 /tmp/ada-seed.log
+    exit 1
+  fi
 fi
 
 cat <<'EOF'

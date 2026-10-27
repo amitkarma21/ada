@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description
+  >Demo: grants edit access to Opportunity.ADA_Demo_Internal_Notes__c.</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.ADA_Demo_Internal_Notes__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>ADA Demo Notes Editor</label>
+</PermissionSet>

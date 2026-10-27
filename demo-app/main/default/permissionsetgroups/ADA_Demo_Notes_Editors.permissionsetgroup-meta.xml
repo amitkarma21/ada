@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<PermissionSetGroup xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description
+  >Demo: the group a user asks to join to get the notes field.</description>
+    <label>ADA Demo Notes Editors</label>
+    <permissionSets>ADA_Demo_Notes_Editor</permissionSets>
+    <status>Updated</status>
+</PermissionSetGroup>

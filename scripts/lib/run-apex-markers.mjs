@@ -42,11 +42,25 @@ export function runApex({ org, file, code }) {
 }
 
 // Returns the text after "<MARKER>|" for every log line that contains it.
+// The platform HTML-escapes "|" and a few other characters inside debug-log message text, so
+// decode them before matching or the marker delimiter never appears.
+function decodeLogEntities(s) {
+  return s
+    .replace(/&#124;/g, '|')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
 export function extractMarkers(logs, marker) {
   const out = [];
   const re = new RegExp(`${marker}\\|(.*)$`);
   for (const line of logs.split(/\r?\n/)) {
-    const m = line.match(re);
+    // The CLI echoes the submitted source as "Execute Anonymous: ..." lines; ignore those.
+    if (line.startsWith('Execute Anonymous:')) continue;
+    const m = decodeLogEntities(line).match(re);
     if (m) out.push(m[1]);
   }
   return out;

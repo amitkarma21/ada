@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ADA_Demo_CloseDate_Future</fullName>
+    <active>true</active>
+    <description
+  >Demo: an open opportunity cannot have a close date in the past.</description>
+    <errorConditionFormula
+  >AND(NOT(IsClosed), CloseDate &lt; TODAY())</errorConditionFormula>
+    <errorDisplayField>CloseDate</errorDisplayField>
+    <errorMessage
+  >Close date cannot be in the past for an open opportunity.</errorMessage>
+</ValidationRule>

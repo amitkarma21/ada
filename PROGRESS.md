@@ -9,7 +9,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | --- | --- | --- | --- | --- | --- |
 | 0.1 | Accounts and tools | HUMAN | doctor | DONE | doctor PASS, `.verify/20261026-162142-doctor`. Groq key, Azure DevOps and ServiceNow deferred (needed from 1.6 / phase 2). Dev Hub alias `ada-devhub` -> AdminBot username. |
 | 0.2 | Project scaffold | | static | DONE | static PASS `.verify/20261027-220419-static` (code-analyzer skipped: no package source yet). `ada-dev` scratch org created by `scripts/new-scratch-org.sh`. CI run 40493548233 green. |
-| 0.3 | Demo org and golden set | | unit | TODO | |
+| 0.3 | Demo org and golden set | | unit | DONE | unit PASS `.verify/20261027-222502-unit` on a fresh `ada-dev` built by `scripts/new-scratch-org.sh`; 4 Apex tests pass; no package classes yet so coverage n/a. Golden set: 8 real cases (VALIDATION_RULE x3, FLOW, APEX, DUPLICATE_RULE, REQUIRED_FIELD, ACCESS) + 3 UNKNOWN. CI: see below. |
 | 1.1 | Data model and settings | security | unit | TODO | |
 | 1.2 | Self-org Tooling API access | HUMAN, security | unit + smoke | TODO | |
 | 1.3 | Metadata index | security | e2e | TODO | |
@@ -30,6 +30,23 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 ## Step notes
 
 <!-- For each step: plan bullets, attempts, deviations, reviewer verdicts. Newest first. -->
+
+### 0.3 Demo org and golden set
+Plan:
+- All metadata in `demo-app/` only: 3 validation rules, notes field + permission set + group, Case flow with Custom Error, Case trigger + test, Account duplicate rule (custom matching rule), ADA Demo app with utility bar.
+- `scripts/e2e/seed.apex` (canary values) and `scripts/e2e/capture-golden.apex` (`Database.insert/update(..., false)`, prints `ADA_GOLDEN|` lines).
+- Deploy to `ada-dev`, run `capture-golden.mjs`, add the access case by hand from an Apex test using `System.runAs`.
+- Gate `unit`; then CI.
+
+Deviations / findings:
+- The platform HTML-escapes `|` as `&#124;` in debug logs and the CLI echoes the submitted source; `extractMarkers` now decodes entities and skips `Execute Anonymous:` lines. Without this no marker is ever found.
+- New custom fields are invisible even to the admin until a permission set grants them, so `new-scratch-org.sh` assigns `ADA_Demo_Notes_Editor` before seeding (seed retries up to 4 times for propagation delay and now fails loudly).
+- `new-scratch-org.sh` and `verify.sh unit` only deployed when `force-app/` had files; both now deploy whichever of `force-app` / `demo-app` has real files.
+- Duplicate rule `sortOrder` is 2 because the standard Account duplicate rule holds 1. Matching rule file must be `Account.matchingRule-meta.xml` with a plain inner fullName.
+- Access case wording captured with a `System.runAs` test (`ADA_Demo_AccessErrorTest`): `CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY`, "Operation failed due to fields being inaccessible on Sobject Opportunity, check errors on Exception or Result!  fieldNames: ADA_Demo_Internal_Notes__c" (note the double space). The test asserts it exactly, so a platform wording change fails the gate.
+- Flow rule is a before-save Custom Error flow, so its message is a `FIELD_CUSTOM_VALIDATION_EXCEPTION` just like validation rules and the trigger; the classifier must tell them apart from the index, not the status code.
+- Utility bar uses the stock To Do List component as a placeholder; the ADA help panel replaces it in step 1.8.
+- step-reviewer subagent failed again (model 404). Diff self-reviewed; run the reviewer once it works.
 
 ### 0.2 Project scaffold
 Plan:

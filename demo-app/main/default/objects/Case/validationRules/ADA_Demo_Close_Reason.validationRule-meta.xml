@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ADA_Demo_Close_Reason</fullName>
+    <active>true</active>
+    <description>Demo: a closed case needs a reason.</description>
+    <errorConditionFormula
+  >AND(ISPICKVAL(Status, &quot;Closed&quot;), ISBLANK(TEXT(Reason)))</errorConditionFormula>
+    <errorDisplayField>Reason</errorDisplayField>
+    <errorMessage>Please choose a reason before closing the case.</errorMessage>
+</ValidationRule>

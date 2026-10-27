@@ -1,84 +1,125 @@
 {
   "version": 1,
   "description": "Golden set for the classifier. 'captured' cases get their message from scripts/e2e/capture-golden.mjs (step 0.3); 'manual' cases are filled by hand with the exact wording seen in the org; 'synthetic' cases are made up and must classify as UNKNOWN.",
-  "capturedAt": null,
+  "capturedAt": "2026-10-27T11:18:30.370Z",
   "cases": [
     {
       "id": "opp-closedate-past",
       "object": "Opportunity",
-      "message": "",
+      "message": "Close date cannot be in the past for an open opportunity.",
       "source": "captured",
-      "expected": { "type": "VALIDATION_RULE", "componentApiName": "ADA_Demo_CloseDate_Future" }
+      "expected": {
+        "type": "VALIDATION_RULE",
+        "componentApiName": "ADA_Demo_CloseDate_Future"
+      },
+      "statusCode": "FIELD_CUSTOM_VALIDATION_EXCEPTION"
     },
     {
       "id": "opp-large-deal-description",
       "object": "Opportunity",
-      "message": "",
+      "message": "Opportunities over 100,000 need a description.",
       "source": "captured",
-      "expected": { "type": "VALIDATION_RULE", "componentApiName": "ADA_Demo_Large_Deal_Description" }
+      "expected": {
+        "type": "VALIDATION_RULE",
+        "componentApiName": "ADA_Demo_Large_Deal_Description"
+      },
+      "statusCode": "FIELD_CUSTOM_VALIDATION_EXCEPTION"
     },
     {
       "id": "case-close-reason",
       "object": "Case",
-      "message": "",
+      "message": "Please choose a reason before closing the case.",
       "source": "captured",
-      "expected": { "type": "VALIDATION_RULE", "componentApiName": "ADA_Demo_Close_Reason" }
+      "expected": {
+        "type": "VALIDATION_RULE",
+        "componentApiName": "ADA_Demo_Close_Reason"
+      },
+      "statusCode": "FIELD_CUSTOM_VALIDATION_EXCEPTION"
     },
     {
       "id": "case-flow-escalated-priority",
       "object": "Case",
-      "message": "",
+      "message": "Escalated cases must have High priority.",
       "source": "captured",
-      "expected": { "type": "FLOW", "componentApiName": null }
+      "expected": {
+        "type": "FLOW",
+        "componentApiName": null
+      },
+      "statusCode": "FIELD_CUSTOM_VALIDATION_EXCEPTION"
     },
     {
       "id": "case-trigger-web-origin",
       "object": "Case",
-      "message": "",
+      "message": "Cases that arrive from the web must have an Origin.",
       "source": "captured",
-      "expected": { "type": "APEX", "componentApiName": null }
+      "expected": {
+        "type": "APEX",
+        "componentApiName": null
+      },
+      "statusCode": "FIELD_CUSTOM_VALIDATION_EXCEPTION"
     },
     {
       "id": "account-duplicate",
       "object": "Account",
-      "message": "",
+      "message": "Use one of these records?",
       "source": "captured",
-      "expected": { "type": "DUPLICATE_RULE", "componentApiName": null }
+      "expected": {
+        "type": "DUPLICATE_RULE",
+        "componentApiName": null
+      },
+      "statusCode": "DUPLICATES_DETECTED"
     },
     {
       "id": "opp-required-field",
       "object": "Opportunity",
-      "message": "",
+      "message": "Required fields are missing: [StageName, CloseDate]",
       "source": "captured",
-      "expected": { "type": "REQUIRED_FIELD", "componentApiName": null }
+      "expected": {
+        "type": "REQUIRED_FIELD",
+        "componentApiName": null
+      },
+      "statusCode": "REQUIRED_FIELD_MISSING"
     },
     {
       "id": "opp-no-field-access",
       "object": "Opportunity",
-      "message": "",
+      "message": "Operation failed due to fields being inaccessible on Sobject Opportunity, check errors on Exception or Result!  fieldNames: ADA_Demo_Internal_Notes__c",
       "source": "manual",
-      "expected": { "type": "ACCESS", "componentApiName": null }
+      "expected": {
+        "type": "ACCESS",
+        "componentApiName": null
+      },
+      "statusCode": "CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY"
     },
     {
       "id": "unknown-made-up-1",
       "object": "Opportunity",
       "message": "Something unexpected went wrong while processing your request.",
       "source": "synthetic",
-      "expected": { "type": "UNKNOWN", "componentApiName": null }
+      "expected": {
+        "type": "UNKNOWN",
+        "componentApiName": null
+      }
     },
     {
       "id": "unknown-made-up-2",
       "object": "Case",
       "message": "The quarterly forecast must be approved before Friday.",
       "source": "synthetic",
-      "expected": { "type": "UNKNOWN", "componentApiName": null }
+      "expected": {
+        "type": "UNKNOWN",
+        "componentApiName": null
+      }
     },
     {
       "id": "unknown-made-up-3",
       "object": "Opportunity",
       "message": "Please contact your administrator.",
       "source": "synthetic",
-      "expected": { "type": "UNKNOWN", "componentApiName": null }
+      "expected": {
+        "type": "UNKNOWN",
+        "componentApiName": null
+      }
     }
   ]
 }

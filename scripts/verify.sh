@@ -91,9 +91,14 @@ gate_static() {
 gate_unit() {
   gate_static
   require_org
-  local dirs=(--source-dir force-app)
+  local dirs=()
+  has_files force-app "*" && dirs+=(--source-dir force-app)
   has_files demo-app "*" && dirs+=(--source-dir demo-app)
-  run deploy sf project deploy start "${dirs[@]}" --target-org "$ORG" --wait 30
+  if [[ "${#dirs[@]}" -gt 0 ]]; then
+    run deploy sf project deploy start "${dirs[@]}" --target-org "$ORG" --wait 30
+  else
+    skip deploy "no source yet"
+  fi
   echo "▶ apex-tests"
   sf apex run test --test-level RunLocalTests --code-coverage --wait 60 \
     --target-org "$ORG" --json >"${LOG_DIR}/apex-tests.json" 2>"${LOG_DIR}/apex-tests.stderr" || true
