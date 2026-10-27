@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Error_Type__c</fullName>
+    <description>Classified error type.</description>
+    <label>Error Type</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>REQUIRED_FIELD</fullName>
+                <default>false</default>
+                <label>REQUIRED_FIELD</label>
+            </value>
+            <value>
+                <fullName>VALIDATION_RULE</fullName>
+                <default>false</default>
+                <label>VALIDATION_RULE</label>
+            </value>
+            <value>
+                <fullName>DUPLICATE_RULE</fullName>
+                <default>false</default>
+                <label>DUPLICATE_RULE</label>
+            </value>
+            <value>
+                <fullName>ACCESS</fullName>
+                <default>false</default>
+                <label>ACCESS</label>
+            </value>
+            <value>
+                <fullName>FLOW</fullName>
+                <default>false</default>
+                <label>FLOW</label>
+            </value>
+            <value>
+                <fullName>APEX</fullName>
+                <default>false</default>
+                <label>APEX</label>
+            </value>
+            <value>
+                <fullName>UNKNOWN</fullName>
+                <default>false</default>
+                <label>UNKNOWN</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Approver__c</fullName>
+    <description>User who approves by email.</description>
+    <label>Approver</label>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>ADA Access Requests To Approve</relationshipLabel>
+    <relationshipName>ADA_Access_Requests_To_Approve</relationshipName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

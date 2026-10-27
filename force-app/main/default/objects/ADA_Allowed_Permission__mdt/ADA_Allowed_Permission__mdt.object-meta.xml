@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Permission set groups ADA may suggest.</description>
+    <label>ADA Allowed Permission</label>
+    <pluralLabel>ADA Allowed Permissions</pluralLabel>
+    <visibility>Public</visibility>
+</CustomObject>

@@ -80,6 +80,27 @@ The `/next-step` skill runs this loop; follow it even when not invoked.
 | Package version + install smoke test | `scripts/verify.sh package` |
 | New scratch org | `scripts/new-scratch-org.sh` |
 
+### Environment notes (this machine)
+
+- Run everything from the repo root (`/Users/oitcuser/Documents/ada`). A shell started elsewhere
+  fails with "not a valid Salesforce DX project".
+- `gh` lives in `~/.local/bin`: prefix commands with `export PATH="$HOME/.local/bin:$PATH"`.
+- Local npm 10 crashes resolving `@salesforce/sfdx-lwc-jest`. Install packages with
+  `npx -y npm@11 install --save-dev <pkg>`; CI uses npm 11.
+- Aliases: `ada-devhub` must point at the Dev Hub username (alias chains do not resolve);
+  `ada-dev` is the scratch org. Recreate it with `scripts/new-scratch-org.sh`.
+- Format before gating: `npm run prettier`. The `static` gate fails on unformatted files.
+- Quick deploy: `sf project deploy start --source-dir force-app --target-org ada-dev --wait 30`.
+  Quick test: `sf apex run test --class-names <Class> --result-format human --wait 10 -o ada-dev`.
+- macOS `sed` needs `sed -i ''`.
+- Permission sets: custom metadata type access uses `customMetadataTypeAccesses`, not
+  `objectPermissions` (those are silently dropped).
+- Package source must not contain the string `ADA_Demo` or a literal `http(s)://` (invariant
+  checks), including in test classes.
+- The `step-reviewer` / `security-reviewer` subagents may fail with a model 404. Self-review the
+  diff and note it in `PROGRESS.md`; retry later.
+- Never commit `.vscode/`.
+
 Gate logs land in `.verify/<timestamp>-<gate>/`; one summary line per run is appended to
 `.verify/history.log`. Quote the log path in `PROGRESS.md`.
 

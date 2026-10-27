@@ -47,7 +47,9 @@ if (failing > 0 || outcome.toLowerCase() === 'failed') {
 }
 
 const coverageList = result.coverage?.coverage ?? [];
-const pkg = coverageList.filter((c) => /^ADA_/.test(c.name ?? '') && !/^ADA_Demo/.test(c.name ?? ''));
+const pkg = coverageList.filter(
+  (c) => /^ADA_/.test(c.name ?? '') && !/^ADA_Demo/.test(c.name ?? '') && !(typeof c.totalLines === 'number' && c.totalLines === 0)
+);
 
 if (pkg.length === 0) {
   lines.push('No package classes yet — coverage check not applicable.');

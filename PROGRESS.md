@@ -10,7 +10,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 0.1 | Accounts and tools | HUMAN | doctor | DONE | doctor PASS, `.verify/20261026-162142-doctor`. Groq key, Azure DevOps and ServiceNow deferred (needed from 1.6 / phase 2). Dev Hub alias `ada-devhub` -> AdminBot username. |
 | 0.2 | Project scaffold | | static | DONE | static PASS `.verify/20261027-220419-static` (code-analyzer skipped: no package source yet). `ada-dev` scratch org created by `scripts/new-scratch-org.sh`. CI run 40493548233 green. |
 | 0.3 | Demo org and golden set | | unit | DONE | unit PASS `.verify/20261027-222502-unit` on a fresh `ada-dev` built by `scripts/new-scratch-org.sh`; 4 Apex tests pass; no package classes yet so coverage n/a. Golden set: 8 real cases (VALIDATION_RULE x3, FLOW, APEX, DUPLICATE_RULE, REQUIRED_FIELD, ACCESS) + 3 UNKNOWN. CI run 40496190202 green. |
-| 1.1 | Data model and settings | security | unit | TODO | |
+| 1.1 | Data model and settings | security | unit | DONE | unit PASS `.verify/20261027-225529-unit`: 22 Apex tests pass, package coverage 100% (3 classes with executable lines), Code Analyzer clean. |
 | 1.2 | Self-org Tooling API access | HUMAN, security | unit + smoke | TODO | |
 | 1.3 | Metadata index | security | e2e | TODO | |
 | 1.4 | Classifier and matchers | | e2e | TODO | |
@@ -30,6 +30,31 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 ## Step notes
 
 <!-- For each step: plan bullets, attempts, deviations, reviewer verdicts. Newest first. -->
+
+### 1.1 Data model and settings
+Result: DONE. Objects, fields, three CMDTs (+ `Default` setting record, Template provider), `ADA_User` / `ADA_Admin` permission sets, enums `ADA_ErrorType` / `ADA_SuggestedAction`, DTOs `ADA_Diagnosis` / `ADA_Explanation` / `ADA_ActionResult`, interfaces `ADA_ILlmProvider` / `ADA_IMetadataIndexStore` / `ADA_IActionTarget`. Tests: `ADA_PermissionsTest` (runAs), `ADA_SchemaTest` (index holds only the ARCHITECTURE §1 fields, no lookups, idempotency key unique), `ADA_SettingTest`, `ADA_DtoTest`.
+Deviations / findings:
+- Tests were written after the metadata was generated, not before (generator output deployed first to flush out metadata errors). Tests then drove the fixes below.
+- Objects: sharing, bulk API and streaming API must be enabled together, so all three are on (sharing is needed for Private OWD). Index OWD is `Read`.
+- Permission set elements of one type must be contiguous (duplicate `objectPermissions` error).
+- CMDT access in a permission set is `customMetadataTypeAccesses`; `objectPermissions` on `__mdt` is silently dropped, and the first `adminSeesEverythingAndManagesIt` run proved it (settings not accessible to the admin).
+- `Database.insert(..., AccessLevel.USER_MODE)` without create permission throws `System.TypeException` ("DML operation INSERT not allowed"), not `DmlException`.
+- `check-coverage.mjs` counted enums/interfaces (0 executable lines) as 0% and failed the per-class minimum; types with `totalLines` 0 are now skipped. Thresholds unchanged.
+- Property declarations with `{ get; set; }` count as lines; the DTO test exercises them.
+- Package source may not contain `ADA_Demo` or a literal URL, even in tests (invariant checks).
+- Reviewers: step-reviewer / security-reviewer not available through the Task tool (model 404 again). Self-review for the security tag:
+  - Logs and requests are Private OWD; `ADA_User` can create and read own, cannot edit or delete logs, cannot set Status / Approver / ServiceNow fields on a request (field-level, tested). `ADA_Admin` has view/modify all and CMDT access (tested).
+  - Index is read-only to `ADA_User` (create/update/delete denied, tested) and holds no record data fields (tested).
+  - Open point for 1.7: `ADA_User` can create log rows directly, so a user could forge audit rows via API. `ADA_ActionLogger` should write logs and the object-level create permission should then be removed from `ADA_User`.
+  - Open point for 3.1: `Justification__c` must pass the PII gate before insert.
+- CLAUDE.md gained an "Environment notes" section with the commands and quirks needed on this machine.
+
+Plan:
+- Objects `ADA_Metadata_Index__c`, `ADA_Action_Log__c`, `ADA_Access_Request__c` (logs and requests Private OWD, index Read) with the ARCHITECTURE §1 fields; CMDTs `ADA_Setting__mdt` (+ `Default` record, Template), `ADA_Allowed_Permission__mdt`, `ADA_Pii_Pattern__mdt`.
+- Permission sets `ADA_User` (create logs/requests, read own, read index; no CMDT access) and `ADA_Admin` (full CRUD, view/modify all, read CMDTs). `ADA_User` gets read-only on Status/Approver/ServiceNow fields of access requests so users can't approve themselves.
+- Apex: `ADA_ErrorType`, `ADA_SuggestedAction` enums; DTOs `ADA_Diagnosis`, `ADA_Explanation`, `ADA_ActionResult`; interfaces `ADA_ILlmProvider`, `ADA_IMetadataIndexStore`, `ADA_IActionTarget`.
+- Tests first: `ADA_PermissionsTest` (runAs), `ADA_SchemaTest` (index has only the listed fields, no lookups), `ADA_SettingTest`, DTO tests.
+- Gate `unit`, then step-reviewer + security-reviewer, CI.
 
 ### 0.3 Demo org and golden set
 Plan:
@@ -73,7 +98,7 @@ Deviations / findings:
 
 | Phase | Gate report | Result | Human approval |
 | --- | --- | --- | --- |
-| 0 | `docs/reports/phase-0.md` | awaiting human approval | |
+| 0 | `docs/reports/phase-0.md` | PASS | "go" (2026-10-27) |
 | 1 | | | |
 | 2 | | | |
 | 3 | | | |

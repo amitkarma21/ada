@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ADO_Work_Item_Type__c</fullName>
+    <description>Work item type, normally Bug.</description>
+    <label>Azure DevOps Work Item Type</label>
+    <length>40</length>
+    <required>false</required>
+    <type>Text</type>
+</CustomField>

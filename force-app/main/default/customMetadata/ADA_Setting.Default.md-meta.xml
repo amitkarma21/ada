@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomMetadata
+  xmlns="http://soap.sforce.com/2006/04/metadata"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+>
+    <label>Default</label>
+    <protected>false</protected>
+    <values>
+        <field>LLM_Provider__c</field>
+        <value xsi:type="xsd:string">Template</value>
+    </values>
+    <values>
+        <field>LLM_Timeout_Ms__c</field>
+        <value xsi:type="xsd:double">10000</value>
+    </values>
+    <values>
+        <field>Confidence_Threshold__c</field>
+        <value xsi:type="xsd:double">0.8</value>
+    </values>
+    <values>
+        <field>ADO_Enabled__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>ADO_Work_Item_Type__c</field>
+        <value xsi:type="xsd:string">Bug</value>
+    </values>
+    <values>
+        <field>ServiceNow_Enabled__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+</CustomMetadata>

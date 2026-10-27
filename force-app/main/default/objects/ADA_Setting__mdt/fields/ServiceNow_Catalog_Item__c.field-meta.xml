@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ServiceNow_Catalog_Item__c</fullName>
+    <description>Catalog item sys_id or name.</description>
+    <label>ServiceNow Catalog Item</label>
+    <length>100</length>
+    <required>false</required>
+    <type>Text</type>
+</CustomField>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Default_Approver_Username__c</fullName>
+    <description>Username of the approver for access requests.</description>
+    <label>Default Approver Username</label>
+    <length>80</length>
+    <required>false</required>
+    <type>Text</type>
+</CustomField>

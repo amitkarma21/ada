@@ -1,0 +1,9 @@
+public enum ADA_ErrorType {
+  REQUIRED_FIELD,
+  VALIDATION_RULE,
+  DUPLICATE_RULE,
+  ACCESS,
+  FLOW,
+  APEX,
+  UNKNOWN
+}

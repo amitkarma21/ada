@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Step__c</fullName>
+    <description>Agent step.</description>
+    <label>Step</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Diagnose</fullName>
+                <default>false</default>
+                <label>Diagnose</label>
+            </value>
+            <value>
+                <fullName>Explain</fullName>
+                <default>false</default>
+                <label>Explain</label>
+            </value>
+            <value>
+                <fullName>Propose</fullName>
+                <default>false</default>
+                <label>Propose</label>
+            </value>
+            <value>
+                <fullName>Confirm</fullName>
+                <default>false</default>
+                <label>Confirm</label>
+            </value>
+            <value>
+                <fullName>Act</fullName>
+                <default>false</default>
+                <label>Act</label>
+            </value>
+            <value>
+                <fullName>Feedback</fullName>
+                <default>false</default>
+                <label>Feedback</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
