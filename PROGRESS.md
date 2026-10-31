@@ -14,7 +14,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 1.2 | Self-org Tooling API access | HUMAN, security | unit + smoke | DONE | unit PASS `.verify/20261028-090656-unit` (38 tests, 97.7%, dev org). Smoke PASS in dev org: `ADA_TOOLING_OK: ADA_Demo_CloseDate_Future,ADA_Demo_Close_Reason,ADA_Demo_Large_Deal_Description`. |
 | 1.3 | Metadata index | security | e2e | DONE | `.verify/20261028-105900-e2e` |
 | 1.4 | Classifier and matchers | | e2e | DONE | `.verify/20261031-171625-e2e` |
-| 1.5 | PII gate, HTTP gateway, payload builders | security | unit | TODO | |
+| 1.5 | PII gate, HTTP gateway, payload builders | security | unit | DONE | `.verify/20261031-184350-unit` |
 | 1.6 | LLM providers | security | unit (+ live) | TODO | |
 | 1.7 | Agent controller and session | security | unit | TODO | |
 | 1.8 | Help panel (LWC) | | unit | TODO | |
@@ -49,6 +49,23 @@ Deviations / findings:
 - Managed-package flows have non-ID version ids and no modified date; they are skipped (only unmanaged active record-triggered flows are indexed).
 - Page-layout required fields are not in the schema and are not indexed (documented in the class).
 Self-review (security; subagent reviewers unavailable): every callout goes through `ADA_ToolingClient` and `ADA_HttpGateway` (`callout:` only); source ids are checked against `[A-Za-z0-9]{15,18}` before they enter dynamic SOQL and class names are escaped; all index SOQL/DML is user mode and the job refuses callers without create/update/delete on the index; formulas are stored masked (`TEXT_n`, `ID_n`) and a test asserts no literal survives; nothing leaves the org apart from metadata queries to the org itself; callouts always precede DML in each transaction and chunks stay under the 100 callout limit with headroom (80).
+
+### 1.5 PII gate, HTTP gateway, payload builders
+Plan:
+- `ADA_Pii_Pattern__mdt` records shipped with the package: `Email`, `Phone_AU`, `Tax_File_Number`, `Card_Number` (regex in `Regex__c`, 255 chars max). `ADA_PiiGate` applies active patterns in a fixed order (by developer name, so card, email, phone, TFN); `Card_Number` hits must pass a Luhn check and `Tax_File_Number` hits the TFN weighted checksum, so phone-like rule numbers are not scrubbed. Unknown admin-added patterns redact as `[REDACTED]`.
+- Name lookup: runs of capitalised words in the text (all 1 to 4 word sub-runs, capped at 40 candidates) are matched exactly against Account and Contact names with two user-mode queries; hits become `[NAME]`. Limitation to document: lower-case typing of a name is not caught.
+- API: `ADA_PiiGate.scrub(text)` returns text + the kinds found; `detect(text)` is pattern-only (no SOQL) for the gateway's last-line check.
+- `ADA_HttpGateway.execute` blocks any request whose body trips `detect` and throws `ADA_BlockedRequestException` (the `Blocked` action-log row is written by the logger in 1.7; the exception carries the kinds).
+- `ADA_PayloadBuilder.forLlm(ADA_Diagnosis, Extras)` returns a typed body with exactly the ARCHITECTURE §4 LLM fields; free text (labels, description, user question) goes through `scrub`, the formula is re-masked, lists and lengths are capped. No other class builds an LLM body.
+- `ADA_EgressCanaryTest`: seeds the canary Account, Contact, Opportunity, Case and a case comment from `test-data/canaries.json`, runs diagnose, builds the LLM payload with a user question that contains the canary name and email, sends through the gateway with a capturing mock, and asserts no canary value is in any recorded endpoint, header or body. Later steps add their flow to this test: explain (1.6), propose and confirm (1.9, 1.10).
+- Verify with `unit` (static checks already ban `new Http()` / `.send(` outside the gateway).
+Result: `unit` PASS, `.verify/20261031-184350-unit`. 179 Apex tests, 0 failing, package coverage 98.2% across 25 classes, lowest class `ADA_MetadataIndexJob` 95%. Code Analyzer clean. `ADA_EgressCanaryTest` passes: no canary value in any recorded endpoint, header or body.
+Deviations / findings (self-review; reviewers unavailable):
+- Email regex bounds the local part to 64 characters (RFC limit); the unbounded form hit "Regex too complicated" on long text with no `@`. A longer local part is still redacted from its last 64 characters.
+- Phone_AU accepts a separator after `+61`. Phone numbers are not mistaken for TFNs (test).
+- A body with no text (`setBody` not called) passes the gateway; a blocked body throws `ADA_BlockedRequestException` with `kinds`. The `Blocked` log row comes with the logger in 1.7.
+- Name lookup only catches capitalised names that exactly match an Account or Contact name (documented limitation). `ADA_PiiGate` skips invalid admin regexes rather than failing.
+- Object, field and permission labels are scrubbed by pattern only (no SOQL), free text also by name.
 
 ### 1.4 Classifier and matchers
 Plan:
