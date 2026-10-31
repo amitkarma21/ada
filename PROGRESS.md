@@ -13,7 +13,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 1.1 | Data model and settings | security | unit | DONE | unit PASS `.verify/20261027-225529-unit`: 22 Apex tests pass, package coverage 100% (3 classes with executable lines), Code Analyzer clean. CI run 40499960671 green. |
 | 1.2 | Self-org Tooling API access | HUMAN, security | unit + smoke | DONE | unit PASS `.verify/20261028-090656-unit` (38 tests, 97.7%, dev org). Smoke PASS in dev org: `ADA_TOOLING_OK: ADA_Demo_CloseDate_Future,ADA_Demo_Close_Reason,ADA_Demo_Large_Deal_Description`. |
 | 1.3 | Metadata index | security | e2e | DONE | `.verify/20261028-105900-e2e` |
-| 1.4 | Classifier and matchers | | e2e | TODO | |
+| 1.4 | Classifier and matchers | | e2e | DONE | `.verify/20261031-171625-e2e` |
 | 1.5 | PII gate, HTTP gateway, payload builders | security | unit | TODO | |
 | 1.6 | LLM providers | security | unit (+ live) | TODO | |
 | 1.7 | Agent controller and session | security | unit | TODO | |
@@ -49,6 +49,25 @@ Deviations / findings:
 - Managed-package flows have non-ID version ids and no modified date; they are skipped (only unmanaged active record-triggered flows are indexed).
 - Page-layout required fields are not in the schema and are not indexed (documented in the class).
 Self-review (security; subagent reviewers unavailable): every callout goes through `ADA_ToolingClient` and `ADA_HttpGateway` (`callout:` only); source ids are checked against `[A-Za-z0-9]{15,18}` before they enter dynamic SOQL and class names are escaped; all index SOQL/DML is user mode and the job refuses callers without create/update/delete on the index; formulas are stored masked (`TEXT_n`, `ID_n`) and a test asserts no literal survives; nothing leaves the org apart from metadata queries to the org itself; callouts always precede DML in each transaction and chunks stay under the 100 callout limit with headroom (80).
+
+### 1.4 Classifier and matchers
+Plan:
+- `ADA_IMatcher` (`ADA_Diagnosis match(ADA_ErrorContext)`, null = no signal) and `ADA_ErrorContext` (object, raw message, normalised message, index rows by type from an injected `ADA_IMetadataIndexStore`, loaded once).
+- `ADA_TextMatch`: score a normalised message against an index template (exact = 1, `{}` wildcard parts matched in order with a minimum amount of literal text, otherwise word-overlap above 0.85). Shared by the validation rule, flow and Apex matchers.
+- Six matchers in the order of ARCHITECTURE §3: `ADA_RequiredFieldMatcher`, `ADA_ValidationRuleMatcher`, `ADA_DuplicateRuleMatcher`, `ADA_AccessChecker`, `ADA_FlowErrorMatcher`, `ADA_ApexErrorMatcher`. Each: positive, negative, near-miss and two-candidate-tie tests (tie drops confidence below the threshold).
+- `ADA_ErrorClassifier` runs the matchers in order; the first result at or above the threshold wins; if another matcher is also confident the winner is capped below the threshold (ambiguous across types). `ADA_DiagnosisService.diagnose(object, message)` reads the threshold from `ADA_Setting__mdt` Default; `diagnoseForHarness` returns the map for the golden runner (no DML, no callouts).
+- Verify: `e2e` gate (golden set >= 95%, zero confident wrong) and log the CPU time of one diagnosis.
+Result: `e2e` PASS, `.verify/20261031-171625-e2e`. 151 Apex tests, 0 failing, package coverage 98.4%, lowest class `ADA_MetadataIndexJob` 95%. Golden set 11/11 (100%, min 95%), 0 confident wrong; the three made-up messages score 0.00 (Unknown). CPU time of one diagnosis in the dev org: 3 to 8 ms (limit 500 ms).
+Deviations / findings:
+- The scoring rule is not "word overlap above 0.85". `ADA_TextMatch` requires every template word to appear in order (recall cubed), tolerates extra message words (merged values) with a mild penalty, caps approximate matches at 0.95 so an exact match always outranks them, and refuses templates under 3 words unless the text is identical. A one-word change in a 10-word message drops below 0.6, so near-misses are never confident (unit tests prove it).
+- Templates lose their `{}` / merge-field positions when normalised, so wildcard matching is by the in-order rule above, not by position.
+- Ties: two candidates within 0.05 cap the answer at 0.5. The configured threshold is clamped to 0.6..1 (default 0.8 if unset) so a tie can never count as confident.
+- Classifier: if two matchers are confident the first is held at threshold - 0.01 (ambiguous, ADA will not guess). A blank object or message is Unknown. With no confident matcher the closest candidate is returned with its low confidence; callers must use `isConfident`.
+- `ADA_AccessChecker` reads the message (status wording and `fieldNames:`); it does not yet cross-check `UserRecordAccess` or describe permissions. It only uses a deferred describe to fetch the field label. Added `ADA_Diagnosis.capConfidence`.
+- Duplicate rule rows carry no message, so the matcher keys on the platform wording (`DUPLICATES_DETECTED`, "use one of these records", "creating a duplicate record"). With several active rules the type is confident but the component stays unnamed; with none indexed it is held at 0.6.
+- `diagnoseForHarness` is `public`, not `global`; a namespaced org would need `global` for the golden runner (revisit at the phase 4 package gate). It also returns `cpuMs`.
+- Code Analyzer flagged `describeSObjects(..., Schema.SObjectDescribeOptions.DEFERRED)` as eager; the rule only accepts the unprefixed `SObjectDescribeOptions.DEFERRED` on `getDescribe`.
+Self-review (security): matchers and classifier do no DML and no callouts; the index is read once per diagnosis through the user-mode store; raw messages are capped at 4000 characters and parsed with fixed regexes, and field names pulled from messages must match `[A-Za-z0-9_]+` before they are returned; the harness returns only type, component name, confidence, threshold and CPU time. Reviewers: step-reviewer / security-reviewer unavailable (model 404), self-reviewed.
 
 ### Process change 2026-10-28: dev org instead of scratch orgs (D-12)
 Human request after repeated scratch-org friction. `ada-dev` is now an alias for the Developer Edition org that is also the Dev Hub (`ada-devhub`); the old scratch org was deleted. `scripts/setup-dev-org.sh` deploys, assigns permission sets and seeds (re-runnable). `verify.sh` `require_org` refuses any org whose `OrganizationType` is not Developer Edition. `unit` PASS against the dev org: `.verify/20261028-090656-unit` (38 tests, 97.7%). Scratch orgs stay only for the optional CI org job and the phase 4 `package` gate. Demo metadata (Case flow and trigger, validation rules, duplicate rule) is now live in the dev org.

@@ -24,6 +24,12 @@ public with sharing class ADA_Diagnosis {
     return errorType != ADA_ErrorType.UNKNOWN && confidence >= threshold;
   }
 
+  public void capConfidence(Decimal ceiling) {
+    if (confidence > ceiling) {
+      confidence = clamp(ceiling);
+    }
+  }
+
   private static Decimal clamp(Decimal value) {
     if (value == null || value < 0) {
       return 0;
