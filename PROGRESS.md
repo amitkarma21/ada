@@ -12,7 +12,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 0.3 | Demo org and golden set | | unit | DONE | unit PASS `.verify/20261027-222502-unit` on a fresh `ada-dev` built by `scripts/new-scratch-org.sh`; 4 Apex tests pass; no package classes yet so coverage n/a. Golden set: 8 real cases (VALIDATION_RULE x3, FLOW, APEX, DUPLICATE_RULE, REQUIRED_FIELD, ACCESS) + 3 UNKNOWN. CI run 40496190202 green. |
 | 1.1 | Data model and settings | security | unit | DONE | unit PASS `.verify/20261027-225529-unit`: 22 Apex tests pass, package coverage 100% (3 classes with executable lines), Code Analyzer clean. CI run 40499960671 green. |
 | 1.2 | Self-org Tooling API access | HUMAN, security | unit + smoke | DONE | unit PASS `.verify/20261028-090656-unit` (38 tests, 97.7%, dev org). Smoke PASS in dev org: `ADA_TOOLING_OK: ADA_Demo_CloseDate_Future,ADA_Demo_Close_Reason,ADA_Demo_Large_Deal_Description`. |
-| 1.3 | Metadata index | security | e2e | TODO | |
+| 1.3 | Metadata index | security | e2e | DONE | `.verify/20261028-105900-e2e` |
 | 1.4 | Classifier and matchers | | e2e | TODO | |
 | 1.5 | PII gate, HTTP gateway, payload builders | security | unit | TODO | |
 | 1.6 | LLM providers | security | unit (+ live) | TODO | |
@@ -30,6 +30,25 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 ## Step notes
 
 <!-- For each step: plan bullets, attempts, deviations, reviewer verdicts. Newest first. -->
+
+### 1.3 Metadata index
+Plan:
+- Sources found by probing the dev org: Tooling `ValidationRule` (list has message, object, active, date; formula needs a single-record `Metadata` query), data API `FlowDefinitionView` (object, trigger type, active version id, date; Tooling `Flow` has no trigger fields), Tooling `ApexTrigger` (+ `Body`) and `ApexClass` (`Body`, for handler classes the triggers call). `DuplicateRule` is **not** a Tooling or Apex-SOQL object; it is only readable through the data API (`/services/data/vNN/query`), so `ADA_ToolingClient` gains `queryData`.
+- Pure helpers first (tests first): `ADA_FormulaMasker` (strings -> `TEXT_n`, 15/18-char ids -> `ID_n`), `ADA_MessageNormaliser`, `ADA_ObjectIndexStore` (user mode, implements `ADA_IMetadataIndexStore`).
+- `ADA_MetadataIndexer`: `discover()` (list callouts, then DML of list-only rows, stale deletes) returns the work items whose source date changed; `runChunk(items, budget)` does one metadata callout per item up to a budget, then DML. Required-field rows come from Schema describe (no callout).
+- `ADA_MetadataIndexJob` (Queueable + Schedulable): first run discovers, every run processes a chunk and chains the rest through a test-replaceable enqueuer. `runNow()` / `schedule()` for the manual and nightly paths.
+- Tests: masker, normaliser, store (runAs ADA_User), indexer with router mock (150 rules split in chunks of 70 across two limit contexts, never over budget; second run with nothing changed makes zero metadata callouts; stale rows removed), job (enqueue, schedule, 401 aborts).
+- `scripts/e2e/index-smoke-*.apex` (markers `ADA_INDEX_OK` / `ADA_INDEX_FAIL`), run through `verify.sh e2e`.
+Result: `e2e` PASS, `.verify/20261028-105900-e2e`. 93 Apex tests, 0 failing, package coverage 98.0%, lowest class `ADA_MetadataIndexJob` 95%. The dev org index holds all 3 demo rules, the demo flow, trigger and duplicate rule, plus required-field rows; a second discovery wants zero fetches and writes nothing. Golden set still skipped (needs 1.4).
+Deviations / findings:
+- Smoke is three files (`index-smoke-1-discover`, `-2-fetch`, `-3-verify`), not one: each stage ends in DML and a callout after DML in the same transaction is rejected. `verify.sh` loops over `index-smoke-*.apex`.
+- A class cannot be both `Queueable` and `Schedulable` (`System.enqueueJob` rejects it), so the nightly trigger is the inner class `ADA_MetadataIndexJob.Nightly`.
+- Reserved Apex identifiers hit: `trigger`, `inner`, `end`. A parameter named `flow` shadows the `FLOW` constant (Apex is case-insensitive).
+- Tests that make callouts call `Test.startTest()` before `System.runAs`; otherwise set-up data counts as uncommitted work and the callout fails.
+- Change detection treated `''` and `null` as different, so every nightly run rewrote trigger rows with no messages. Found by the smoke run; fixed with `sameText` and covered by a unit test.
+- Managed-package flows have non-ID version ids and no modified date; they are skipped (only unmanaged active record-triggered flows are indexed).
+- Page-layout required fields are not in the schema and are not indexed (documented in the class).
+Self-review (security; subagent reviewers unavailable): every callout goes through `ADA_ToolingClient` and `ADA_HttpGateway` (`callout:` only); source ids are checked against `[A-Za-z0-9]{15,18}` before they enter dynamic SOQL and class names are escaped; all index SOQL/DML is user mode and the job refuses callers without create/update/delete on the index; formulas are stored masked (`TEXT_n`, `ID_n`) and a test asserts no literal survives; nothing leaves the org apart from metadata queries to the org itself; callouts always precede DML in each transaction and chunks stay under the 100 callout limit with headroom (80).
 
 ### Process change 2026-10-28: dev org instead of scratch orgs (D-12)
 Human request after repeated scratch-org friction. `ada-dev` is now an alias for the Developer Edition org that is also the Dev Hub (`ada-devhub`); the old scratch org was deleted. `scripts/setup-dev-org.sh` deploys, assigns permission sets and seeds (re-runnable). `verify.sh` `require_org` refuses any org whose `OrganizationType` is not Developer Edition. `unit` PASS against the dev org: `.verify/20261028-090656-unit` (38 tests, 97.7%). Scratch orgs stay only for the optional CI org job and the phase 4 `package` gate. Demo metadata (Case flow and trigger, validation rules, duplicate rule) is now live in the dev org.

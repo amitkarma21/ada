@@ -6,18 +6,25 @@ public with sharing class ADA_ToolingClient {
   private static final Integer MAX_PAGES = 25;
   private static final String CREDENTIAL = 'callout:ADA_Self_Tooling';
   private static final String QUERY_PATH = '/services/data/v68.0/tooling/query/?q=';
+  private static final String DATA_QUERY_PATH = '/services/data/v68.0/query/?q=';
   private static final String DATA_API_PREFIX = '/services/data/';
   private static final String RECONNECT = 'Run the ADA setup to reconnect.';
 
   public List<Map<String, Object>> query(String soql) {
+    return run(QUERY_PATH, soql);
+  }
+
+  // Some setup objects (DuplicateRule, FlowDefinitionView) exist only in the data API.
+  public List<Map<String, Object>> queryData(String soql) {
+    return run(DATA_QUERY_PATH, soql);
+  }
+
+  private static List<Map<String, Object>> run(String path, String soql) {
     if (String.isBlank(soql)) {
       throw new ToolingException('A Tooling API query is required.');
     }
     List<Map<String, Object>> records = new List<Map<String, Object>>();
-    String endpoint =
-      CREDENTIAL +
-      QUERY_PATH +
-      EncodingUtil.urlEncode(soql, 'UTF-8');
+    String endpoint = CREDENTIAL + path + EncodingUtil.urlEncode(soql, 'UTF-8');
     Integer pages = 0;
     while (endpoint != null) {
       pages++;

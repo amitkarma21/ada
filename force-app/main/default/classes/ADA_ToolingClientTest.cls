@@ -77,6 +77,43 @@ private class ADA_ToolingClientTest {
   }
 
   @IsTest
+  static void queryDataUsesTheDataApiQueryPathAndFollowsPages() {
+    QueueMock mock = mockWith(
+      new List<HttpResponse>{
+        page(
+          '{"done":false,"nextRecordsUrl":"/services/data/v68.0/query/01g-2000","records":[{"Id":"1"}]}'
+        ),
+        page('{"done":true,"records":[{"Id":"2"}]}')
+      }
+    );
+    String soql = 'SELECT Id FROM DuplicateRule';
+    Test.startTest();
+    List<Map<String, Object>> records = new ADA_ToolingClient().queryData(soql);
+    Test.stopTest();
+    Assert.areEqual(2, records.size());
+    Assert.areEqual(
+      BASE +
+        '/services/data/v68.0/query/?q=' +
+        EncodingUtil.urlEncode(soql, 'UTF-8'),
+      mock.seen[0].getEndpoint()
+    );
+    Assert.areEqual(
+      BASE + '/services/data/v68.0/query/01g-2000',
+      mock.seen[1].getEndpoint()
+    );
+  }
+
+  @IsTest
+  static void queryDataRequiresAQuery() {
+    try {
+      new ADA_ToolingClient().queryData(' ');
+      Assert.fail('Expected a ToolingException');
+    } catch (ADA_ToolingClient.ToolingException e) {
+      Assert.isTrue(e.getMessage().contains('required'));
+    }
+  }
+
+  @IsTest
   static void emptyResultIsAnEmptyList() {
     mockWith(new List<HttpResponse>{ page('{"done":true,"records":[]}') });
     Test.startTest();

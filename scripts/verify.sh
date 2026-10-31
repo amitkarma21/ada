@@ -113,11 +113,17 @@ gate_unit() {
 
 gate_e2e() {
   gate_unit
-  if [[ -f scripts/e2e/index-smoke.apex ]]; then
-    run index-smoke node scripts/lib/run-apex-markers.mjs --org "$ORG" \
-      --file scripts/e2e/index-smoke.apex --expect ADA_INDEX_OK --fail-on ADA_INDEX_FAIL
+  # Discovery, fetch and verify are separate anonymous runs: each ends in DML, and a callout
+  # after DML in the same transaction is rejected.
+  local smoke
+  smoke=(scripts/e2e/index-smoke-*.apex)
+  if [[ -f "${smoke[0]}" ]]; then
+    for f in "${smoke[@]}"; do
+      run "$(basename "$f" .apex)" node scripts/lib/run-apex-markers.mjs --org "$ORG" \
+        --file "$f" --expect ADA_INDEX_OK --fail-on ADA_INDEX_FAIL
+    done
   else
-    skip index-smoke "scripts/e2e/index-smoke.apex not written yet (step 1.3)"
+    skip index-smoke "scripts/e2e/index-smoke-*.apex not written yet (step 1.3)"
   fi
   if [[ -f force-app/main/default/classes/ADA_DiagnosisService.cls ]]; then
     run golden-set node scripts/e2e/run-golden.mjs --org "$ORG" --min-accuracy "$MIN_GOLDEN" \
