@@ -12,7 +12,9 @@ private class ADA_SchemaTest {
     'field_api_names__c',
     'active__c',
     'source_last_modified__c',
-    'indexed_at__c'
+    'indexed_at__c',
+    'explanation_json__c',
+    'explained_for__c'
   };
 
   @IsTest

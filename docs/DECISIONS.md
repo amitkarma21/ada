@@ -77,3 +77,11 @@ validation rules, duplicate rule) is live in that org; there is no clean-slate r
 runs (the seed script is re-runnable, deploys are idempotent); phase-gate "fresh org" runs need a
 manual reset. Scratch orgs remain only for the CI org job and the phase 4 `package` gate, which
 must install into an empty org.
+
+## D-13 One `ADA_LLM` Named Credential, URL set at setup — ACCEPTED
+A single `ADA_LLM` Named Credential (OpenAI-compatible chat completions) is created at setup from
+`setup/llm-template` with the provider's base URL, instead of shipping one credential per provider.
+The provider and model live in `ADA_Setting__mdt`; the key is pasted into the External Credential
+principal and never passes through scripts or code. `ADA_AnthropicProvider` (later) would need its
+own credential because its request format differs. Revisit at the package gate (4.2) if a packaged
+credential's URL cannot be edited by subscribers.

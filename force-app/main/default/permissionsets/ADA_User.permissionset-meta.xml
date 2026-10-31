@@ -183,6 +183,16 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>false</editable>
+        <field>ADA_Metadata_Index__c.Explanation_Json__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>ADA_Metadata_Index__c.Explained_For__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
         <field>ADA_Metadata_Index__c.Source_Last_Modified__c</field>
         <readable>true</readable>
     </fieldPermissions>

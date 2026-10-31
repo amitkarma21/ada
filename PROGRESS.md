@@ -15,7 +15,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 1.3 | Metadata index | security | e2e | DONE | `.verify/20261028-105900-e2e` |
 | 1.4 | Classifier and matchers | | e2e | DONE | `.verify/20261031-171625-e2e` |
 | 1.5 | PII gate, HTTP gateway, payload builders | security | unit | DONE | `.verify/20261031-184350-unit` |
-| 1.6 | LLM providers | security | unit (+ live) | TODO | |
+| 1.6 | LLM providers | security | unit (+ live) | DONE (unit; live pending Groq key) | `.verify/20261031-192535-unit` |
 | 1.7 | Agent controller and session | security | unit | TODO | |
 | 1.8 | Help panel (LWC) | | unit | TODO | |
 | 2.1 | Azure DevOps target | security | unit | TODO | |
@@ -49,6 +49,26 @@ Deviations / findings:
 - Managed-package flows have non-ID version ids and no modified date; they are skipped (only unmanaged active record-triggered flows are indexed).
 - Page-layout required fields are not in the schema and are not indexed (documented in the class).
 Self-review (security; subagent reviewers unavailable): every callout goes through `ADA_ToolingClient` and `ADA_HttpGateway` (`callout:` only); source ids are checked against `[A-Za-z0-9]{15,18}` before they enter dynamic SOQL and class names are escaped; all index SOQL/DML is user mode and the job refuses callers without create/update/delete on the index; formulas are stored masked (`TEXT_n`, `ID_n`) and a test asserts no literal survives; nothing leaves the org apart from metadata queries to the org itself; callouts always precede DML in each transaction and chunks stay under the 100 callout limit with headroom (80).
+
+### 1.6 LLM providers
+Plan:
+- `ADA_ILlmProvider.explain(diagnosis, extras)` (extras carry the masked formula, labels and question the diagnosis does not hold) and `lastPayload()` (the exact body sent, for the `Explain` log row in 1.7). Implementations: `ADA_TemplateProvider` (deterministic text per error type, default and fallback) and `ADA_OpenAiCompatibleProvider` (`POST callout:ADA_LLM/chat/completions`, temperature 0, token cap, JSON mode, timeout from settings).
+- `ADA_PromptBuilder`: system prompt in static resource `ADA_Explain_Prompt` (built-in constant if the resource is missing); the user message is exactly `ADA_PayloadBuilder.toJson(forLlm(...))`. Snapshot test: user message keys equal the contract fields.
+- `ADA_LlmResponseValidator`: strict parse of the OpenAI envelope and of `{explanation <= 1200, fixSteps <= 5, suggestedAction in NONE|RAISE_BUG|REQUEST_ACCESS}`; extra or missing fields, wrong types, links and over-length text are rejected. The model's suggested action is advisory; the controller never acts on it.
+- `ADA_ExplanationCache`: two new fields on `ADA_Metadata_Index__c` (`Explanation_Json__c`, `Explained_For__c`), valid only while `Explained_For__c = Source_Last_Modified__c` and the locale matches. Skipped when the user typed a question. The write is system mode (shared metadata-derived text, two fields only) because end users cannot edit the index.
+- `ADA_LlmProviderFactory` (reads `ADA_Setting__mdt` Default; Template unless `OpenAICompatible` with a model) and `ADA_ExplanationService.explain` (cache, provider, validate, otherwise Template; returns an `Outcome` with the explanation, payload sent, cached flag, fallback reason, blocked kinds).
+- Named Credential decision (D-13): one `ADA_LLM` credential created at setup from `setup/llm-template` (base URL chosen at setup) rather than one per provider. `scripts/setup-llm.sh` deploys it and sets provider + model; the human pastes the API key into the principal.
+- Egress canary test gains the explain flow. Live smoke `scripts/e2e/live-llm.apex` (three golden cases).
+- Verify with `unit`; `live` needs the Groq key.
+Result: `unit` PASS, `.verify/20261031-192535-unit`. 222 Apex tests, 0 failing, package coverage 98.2% across 32 classes, lowest class `ADA_ExplanationService` 92%. Code Analyzer clean. Egress canary now also covers explain (no canary in the model request; the logged payload is the scrubbed body). Live smoke not run: needs the Groq key (see below).
+Deviations / findings (self-review; reviewers unavailable):
+- `ADA_ILlmProvider.explain` takes `(diagnosis, extras)` and adds `lastPayload()` (the exact body sent, for the Explain log row in 1.7). `ADA_Explanation` gained `suggestedAction` (advisory only; the controller never acts on it).
+- Cache writes happen in a `without sharing` inner class of `ADA_ExplanationCache`: the index has Read sharing, so even system mode could not update it for a normal user (found by test). It only updates the two cache fields on a row that was read in user mode. Cache is skipped when the user typed a question, and keyed on `Source_Last_Modified__c` plus locale. Added fields `Explanation_Json__c`, `Explained_For__c` to the index, ARCHITECTURE and both permission sets (the schema test allow-list is updated).
+- Validator rejects extra or missing keys, wrong types, empty or over-length text, links, and any action outside NONE / RAISE_BUG / REQUEST_ACCESS. Template fallback covers invalid JSON, 429, other non-2xx, timeouts and blocked payloads.
+- D-13: one `ADA_LLM` credential, URL set at setup. `scripts/setup-llm.sh` deploys it and turns the provider on; `scripts/e2e/live-llm.apex` is the live smoke (three golden cases).
+- Not done: `ADA_AnthropicProvider` (later). `LIVE=1` run waits for the human step below.
+HUMAN to enable live: `scripts/setup-llm.sh ada-dev` (asks for the model id), then in Setup paste the Groq key as authentication parameter `ApiKey` on the `ADA_LLM_Principal`, then `LIVE=1 scripts/verify.sh live` and paste the output here.
+
 
 ### 1.5 PII gate, HTTP gateway, payload builders
 Plan:

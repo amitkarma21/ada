@@ -20,6 +20,7 @@ private class ADA_EgressCanaryTest {
 
   private class Recorder implements HttpCalloutMock {
     public List<String> requests = new List<String>();
+    public String body = '{"records":[],"done":true}';
 
     public HttpResponse respond(HttpRequest request) {
       requests.add(
@@ -31,7 +32,7 @@ private class ADA_EgressCanaryTest {
       );
       HttpResponse response = new HttpResponse();
       response.setStatusCode(200);
-      response.setBody('{"records":[],"done":true}');
+      response.setBody(body);
       return response;
     }
   }
@@ -105,7 +106,7 @@ private class ADA_EgressCanaryTest {
     }
   }
 
-  // Each later step adds its own flow here: explain (1.6), propose (1.9), confirm (1.10).
+  // Each later step adds its own flow here: propose (1.9), confirm (1.10).
   @IsTest
   static void diagnoseThenExplainSendsNoRecordValue() {
     seedCanaryRecords();
@@ -150,6 +151,61 @@ private class ADA_EgressCanaryTest {
     Assert.isTrue(first.contains('[EMAIL]'));
     Assert.isTrue(first.contains('[PHONE]'));
     Assert.isTrue(first.contains('Large_Deal_Rule'));
+  }
+
+  @IsTest
+  static void theExplainFlowSendsNoRecordValueToTheModel() {
+    seedCanaryRecords();
+    Recorder recorder = new Recorder();
+    recorder.body = ADA_LlmTestSupport.envelope(
+      ADA_LlmTestSupport.VALID_CONTENT
+    );
+    Test.setMock(HttpCalloutMock.class, recorder);
+    ADA_LlmTestSupport.useOpenAi();
+
+    ADA_Diagnosis rule = ADA_DiagnosisService.diagnose(
+      'Opportunity',
+      'Opportunities over 100,000 need a description.',
+      store()
+    );
+    rule.description = 'Raised for ' + EMAIL + ' on ' + ACCOUNT_NAME;
+    ADA_PayloadBuilder.Extras extras = new ADA_PayloadBuilder.Extras();
+    extras.objectLabel = 'Opportunity';
+    extras.conditionFormulaMasked =
+      'AND(Name = "' +
+      OPPORTUNITY_NAME +
+      '", Amount > 100000)';
+    extras.userQuestion =
+      'Why can\'t I save ' +
+      ACCOUNT_NAME +
+      '? Reply to ' +
+      EMAIL +
+      ' or ring 0412 345 678.';
+
+    Test.startTest();
+    ADA_ExplanationService.Outcome outcome = ADA_ExplanationService.explain(
+      rule,
+      extras
+    );
+    Test.stopTest();
+
+    Assert.areEqual(
+      'LLM',
+      outcome.explanation.source,
+      'Fell back: ' + outcome.fallbackReason
+    );
+    assertNoCanary(recorder);
+    Assert.areEqual(1, recorder.requests.size());
+    String sent = recorder.requests[0];
+    Assert.isTrue(sent.contains('[NAME]'));
+    Assert.isTrue(sent.contains('[EMAIL]'));
+    Assert.isTrue(sent.contains('[PHONE]'));
+    Assert.isTrue(sent.contains('TEXT_1'));
+    Assert.isTrue(sent.contains('Large_Deal_Rule'));
+    Assert.isFalse(
+      outcome.payloadSent.contains(EMAIL),
+      'The logged payload must be the scrubbed body'
+    );
   }
 
   @IsTest
