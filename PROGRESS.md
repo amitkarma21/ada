@@ -15,7 +15,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 1.3 | Metadata index | security | e2e | DONE | `.verify/20261028-105900-e2e` |
 | 1.4 | Classifier and matchers | | e2e | DONE | `.verify/20261031-171625-e2e` |
 | 1.5 | PII gate, HTTP gateway, payload builders | security | unit | DONE | `.verify/20261031-184350-unit` |
-| 1.6 | LLM providers | security | unit (+ live) | DONE (unit; live pending Groq key) | `.verify/20261031-192535-unit` |
+| 1.6 | LLM providers | security | unit (+ live) | DONE | unit `.verify/20261031-192535-unit`; live PASS `.verify/20261031-195113-live` |
 | 1.7 | Agent controller and session | security | unit | TODO | |
 | 1.8 | Help panel (LWC) | | unit | TODO | |
 | 2.1 | Azure DevOps target | security | unit | TODO | |
@@ -66,8 +66,8 @@ Deviations / findings (self-review; reviewers unavailable):
 - Cache writes happen in a `without sharing` inner class of `ADA_ExplanationCache`: the index has Read sharing, so even system mode could not update it for a normal user (found by test). It only updates the two cache fields on a row that was read in user mode. Cache is skipped when the user typed a question, and keyed on `Source_Last_Modified__c` plus locale. Added fields `Explanation_Json__c`, `Explained_For__c` to the index, ARCHITECTURE and both permission sets (the schema test allow-list is updated).
 - Validator rejects extra or missing keys, wrong types, empty or over-length text, links, and any action outside NONE / RAISE_BUG / REQUEST_ACCESS. Template fallback covers invalid JSON, 429, other non-2xx, timeouts and blocked payloads.
 - D-13: one `ADA_LLM` credential, URL set at setup. `scripts/setup-llm.sh` deploys it and turns the provider on; `scripts/e2e/live-llm.apex` is the live smoke (three golden cases).
-- Not done: `ADA_AnthropicProvider` (later). `LIVE=1` run waits for the human step below.
-HUMAN to enable live: `scripts/setup-llm.sh ada-dev` (asks for the model id), then in Setup paste the Groq key as authentication parameter `ApiKey` on the `ADA_LLM_Principal`, then `LIVE=1 scripts/verify.sh live` and paste the output here.
+- Not done: `ADA_AnthropicProvider` (later).
+- Live: `llama-3.3-70b-versatile` is no longer offered to this Groq account (404 `model_not_found`; found by listing `/models` through the credential), so the build model is `openai/gpt-oss-120b`. The unit gate redeploys the repo default setting (Template) over the org's, so the live gate now applies the LLM setting itself (`scripts/lib/apply-llm-setting.sh`, override with `ADA_LLM_MODEL`). Live result: three golden validation rules each returned a valid, accurate explanation from Groq (masked `TEXT_1` appears in one answer, a cosmetic point for the prompt in 1.8). The first key was typed as the model id by mistake and revoked by the human.
 
 
 ### 1.5 PII gate, HTTP gateway, payload builders

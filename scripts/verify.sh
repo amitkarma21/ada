@@ -140,6 +140,7 @@ gate_live() {
     exit 2
   fi
   gate_e2e
+  run live-llm-setting scripts/lib/apply-llm-setting.sh "$ORG" "${ADA_LLM_MODEL:-openai/gpt-oss-120b}"
   local found=0
   for f in scripts/e2e/live-*.apex; do
     [[ -e "$f" ]] || continue
