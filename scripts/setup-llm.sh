@@ -11,8 +11,12 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 ORG="${1:-ada-dev}"
 BASE_URL="${ADA_LLM_BASE_URL:-https://api.groq.com/openai/v1}"
 MODEL="${ADA_LLM_MODEL:-}"
-if [[ -z "$MODEL" ]]; then read -rp "Model id (from the provider's model list, must support JSON output): " MODEL; fi
+if [[ -z "$MODEL" ]]; then read -rp "Model id, NOT the API key (from the provider's model list, must support JSON output): " MODEL; fi
 [[ -n "$MODEL" ]] || { echo "A model id is required." >&2; exit 1; }
+if [[ "$MODEL" == gsk_* || "$MODEL" == sk-* || "${#MODEL}" -gt 80 ]]; then
+  echo "That looks like an API key, not a model id (for example llama-3.3-70b-versatile). Nothing was deployed." >&2
+  exit 1
+fi
 
 rm -rf setup/rendered
 mkdir -p setup/rendered
