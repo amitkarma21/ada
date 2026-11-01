@@ -4,6 +4,7 @@ public with sharing class ADA_PayloadBuilder {
   public static final Integer MAX_FORMULA = 1000;
   public static final Integer MAX_LABEL = 120;
   public static final Integer MAX_LIST = 20;
+  public static final Integer MAX_NOTES = 2000;
 
   public class Extras {
     public String objectLabel;
@@ -29,6 +30,14 @@ public with sharing class ADA_PayloadBuilder {
     public List<String> missingPermissionLabels;
     public String userQuestion;
     public String locale;
+  }
+
+  // The work item preview (ARCHITECTURE section 4, Azure DevOps). Metadata and the
+  // user's own notes after the PII gate; no error text and no record values.
+  public class WorkItemBody {
+    public String title;
+    public String description;
+    public String tags;
   }
 
   public static LlmBody forLlm(ADA_Diagnosis diagnosis, Extras extras) {
@@ -64,6 +73,50 @@ public with sharing class ADA_PayloadBuilder {
   }
 
   public static String toJson(LlmBody body) {
+    return JSON.serialize(body, true);
+  }
+
+  public static WorkItemBody forWorkItem(
+    ADA_Diagnosis diagnosis,
+    String sessionKey,
+    String userNotes
+  ) {
+    WorkItemBody body = new WorkItemBody();
+    String type = diagnosis.errorType.name();
+    String component = diagnosis.componentApiName;
+    body.title = 'ADA: ' + type;
+    if (String.isNotBlank(diagnosis.objectApiName)) {
+      body.title += ' on ' + diagnosis.objectApiName;
+    }
+    if (String.isNotBlank(component)) {
+      body.title += ' (' + component + ')';
+    }
+    List<String> lines = new List<String>{ 'Error type: ' + type };
+    if (String.isNotBlank(diagnosis.objectApiName)) {
+      lines.add('Object: ' + diagnosis.objectApiName);
+    }
+    if (String.isNotBlank(component)) {
+      String label = String.isBlank(diagnosis.componentLabel)
+        ? component
+        : clip(ADA_PiiGate.scrub(diagnosis.componentLabel).text, MAX_LABEL);
+      lines.add('Component: ' + label + ' [' + diagnosis.componentType + ']');
+    }
+    lines.add('Confidence: ' + diagnosis.confidence);
+    lines.add('Session: ' + sessionKey);
+    String notes = clip(ADA_PiiGate.scrub(userNotes).text, MAX_NOTES);
+    if (String.isNotBlank(notes)) {
+      lines.add('');
+      lines.add('User notes:');
+      lines.add(notes);
+    }
+    body.description = String.join(lines, '\n');
+    body.tags = String.isBlank(component)
+      ? 'ADA'
+      : 'ADA; ADA-rule:' + component;
+    return body;
+  }
+
+  public static String toJson(WorkItemBody body) {
     return JSON.serialize(body, true);
   }
 

@@ -1,0 +1,341 @@
+public with sharing class ADA_AgentController {
+  public static final String NOT_SURE = 'I\'m not sure what\'s blocking you.';
+  public static final String ACTION_EXPLAIN = 'EXPLAIN';
+  public static final String ACTION_RAISE_BUG = 'RAISE_BUG';
+  private static final Integer MAX_ERROR_TEXT = 4000;
+  private static final Integer MAX_QUESTION_INPUT = 2000;
+
+  private static final Map<ADA_ErrorType, String> KIND = new Map<ADA_ErrorType, String>{
+    ADA_ErrorType.REQUIRED_FIELD => 'a required field',
+    ADA_ErrorType.VALIDATION_RULE => 'a validation rule',
+    ADA_ErrorType.DUPLICATE_RULE => 'a duplicate rule',
+    ADA_ErrorType.ACCESS => 'an access problem',
+    ADA_ErrorType.FLOW => 'a flow',
+    ADA_ErrorType.APEX => 'custom code'
+  };
+
+  public class DiagnosisView {
+    @AuraEnabled
+    public String sessionKey;
+    @AuraEnabled
+    public String errorType;
+    @AuraEnabled
+    public String headline;
+    @AuraEnabled
+    public Decimal confidence;
+    @AuraEnabled
+    public Boolean confident;
+    @AuraEnabled
+    public String objectApiName;
+    @AuraEnabled
+    public String componentType;
+    @AuraEnabled
+    public String componentApiName;
+    @AuraEnabled
+    public String componentLabel;
+    @AuraEnabled
+    public List<String> allowedActions;
+  }
+
+  public class ExplanationView {
+    @AuraEnabled
+    public String sessionKey;
+    @AuraEnabled
+    public String summary;
+    @AuraEnabled
+    public List<String> fixSteps;
+    @AuraEnabled
+    public String source;
+    @AuraEnabled
+    public Boolean cached = false;
+    @AuraEnabled
+    public Boolean usedFallback = false;
+    @AuraEnabled
+    public List<String> allowedActions;
+  }
+
+  public class ProposalView {
+    @AuraEnabled
+    public String sessionKey;
+    @AuraEnabled
+    public String actionType;
+    @AuraEnabled
+    public String title;
+    @AuraEnabled
+    public String payloadJson;
+    @AuraEnabled
+    public Boolean requiresConfirmation = true;
+  }
+
+  @AuraEnabled
+  public static DiagnosisView diagnose(String errorText, String recordId) {
+    if (String.isBlank(errorText)) {
+      throw fail('Paste the error message first.');
+    }
+    ADA_Diagnosis diagnosis = ADA_DiagnosisService.diagnose(
+      objectFor(recordId),
+      errorText.left(MAX_ERROR_TEXT)
+    );
+    String key = ADA_AgentSession.newKey();
+    ADA_ActionLogger.Entry entry = entryFor(key, diagnosis, 'Diagnose');
+    entry.result = ADA_AgentSession.snapshot(diagnosis);
+    ADA_ActionLogger.write(entry);
+
+    Boolean confident = isConfident(diagnosis);
+    DiagnosisView view = new DiagnosisView();
+    view.sessionKey = key;
+    view.errorType = diagnosis.errorType.name();
+    view.confidence = diagnosis.confidence;
+    view.confident = confident;
+    view.headline = confident ? headline(diagnosis) : NOT_SURE;
+    view.objectApiName = diagnosis.objectApiName;
+    view.componentType = diagnosis.componentType;
+    view.componentApiName = diagnosis.componentApiName;
+    view.componentLabel = diagnosis.componentLabel;
+    view.allowedActions = allowedActions(diagnosis);
+    return view;
+  }
+
+  @AuraEnabled
+  public static ExplanationView explain(
+    String sessionKey,
+    String userQuestion
+  ) {
+    ADA_AgentSession session = load(sessionKey);
+    ADA_Diagnosis diagnosis = session.diagnosis;
+    ExplanationView view = new ExplanationView();
+    view.sessionKey = session.key;
+    view.allowedActions = allowedActions(diagnosis);
+    ADA_ActionLogger.Entry entry = entryFor(session.key, diagnosis, 'Explain');
+    if (!isConfident(diagnosis)) {
+      view.summary =
+        NOT_SURE +
+        ' I can pass the details to your admin team so they can look into it.';
+      view.fixSteps = new List<String>();
+      view.source = 'None';
+      entry.result = 'Not sure: no explanation attempted.';
+      ADA_ActionLogger.write(entry);
+      return view;
+    }
+    ADA_ExplanationService.Outcome outcome = ADA_ExplanationService.explain(
+      diagnosis,
+      extrasFor(diagnosis, userQuestion)
+    );
+    view.summary = outcome.explanation.summary;
+    view.fixSteps = outcome.explanation.fixSteps;
+    view.source = outcome.explanation.source;
+    view.cached = outcome.cached;
+    view.usedFallback = outcome.fallbackReason != null;
+    entry.targetSystem = outcome.payloadSent != null ||
+      !outcome.blockedKinds.isEmpty()
+      ? 'LLM'
+      : 'None';
+    entry.payloadSent = outcome.payloadSent;
+    entry.status = statusFor(outcome);
+    entry.result = resultFor(outcome);
+    ADA_ActionLogger.write(entry);
+    return view;
+  }
+
+  @AuraEnabled
+  public static ProposalView proposeAction(
+    String sessionKey,
+    String actionType
+  ) {
+    ADA_AgentSession session = load(sessionKey);
+    ADA_Diagnosis diagnosis = session.diagnosis;
+    if (
+      actionType != ACTION_RAISE_BUG ||
+      !allowedActions(diagnosis).contains(actionType)
+    ) {
+      throw fail('That action is not available.');
+    }
+    ADA_PayloadBuilder.WorkItemBody body = ADA_PayloadBuilder.forWorkItem(
+      diagnosis,
+      session.key,
+      null
+    );
+    ADA_ActionLogger.Entry entry = entryFor(session.key, diagnosis, 'Propose');
+    entry.result = 'Proposed ' + actionType + '. Nothing was sent.';
+    ADA_ActionLogger.write(entry);
+
+    ProposalView view = new ProposalView();
+    view.sessionKey = session.key;
+    view.actionType = actionType;
+    view.title = body.title;
+    view.payloadJson = ADA_PayloadBuilder.toJson(body);
+    return view;
+  }
+
+  @AuraEnabled
+  public static void recordFeedback(String sessionKey, Boolean solved) {
+    ADA_AgentSession session = load(sessionKey);
+    if (solved == null) {
+      throw fail('Say whether this solved your problem.');
+    }
+    ADA_ActionLogger.Entry entry = entryFor(
+      session.key,
+      session.diagnosis,
+      'Feedback'
+    );
+    entry.feedback = solved ? 'Solved' : 'Not solved';
+    entry.idempotencyKey = session.key + ':Feedback';
+    ADA_ActionLogger.write(entry);
+  }
+
+  @TestVisible
+  private static String statusFor(ADA_ExplanationService.Outcome outcome) {
+    if (!outcome.blockedKinds.isEmpty()) {
+      return 'Blocked';
+    }
+    return outcome.fallbackReason == null ? 'Success' : 'Fallback';
+  }
+
+  private static String resultFor(ADA_ExplanationService.Outcome outcome) {
+    List<String> parts = new List<String>{
+      'Answered by ' + outcome.explanation.source
+    };
+    if (outcome.cached) {
+      parts.add('from cache');
+    }
+    if (!outcome.blockedKinds.isEmpty()) {
+      parts.add(
+        'blocked: ' + String.join(new List<String>(outcome.blockedKinds), ', ')
+      );
+    }
+    if (outcome.fallbackReason != null) {
+      parts.add('fallback reason: ' + outcome.fallbackReason);
+    }
+    return String.join(parts, '; ');
+  }
+
+  private static ADA_AgentSession load(String sessionKey) {
+    try {
+      return ADA_AgentSession.load(sessionKey);
+    } catch (ADA_AgentSession.SessionException missing) {
+      throw fail('Session not found. Start again.');
+    }
+  }
+
+  private static ADA_ActionLogger.Entry entryFor(
+    String key,
+    ADA_Diagnosis diagnosis,
+    String step
+  ) {
+    ADA_ActionLogger.Entry entry = new ADA_ActionLogger.Entry();
+    entry.sessionKey = key;
+    entry.step = step;
+    entry.errorType = diagnosis.errorType.name();
+    entry.componentApiName = diagnosis.componentApiName;
+    entry.confidence = diagnosis.confidence;
+    return entry;
+  }
+
+  private static Boolean isConfident(ADA_Diagnosis diagnosis) {
+    return diagnosis.isConfident(ADA_DiagnosisService.threshold());
+  }
+
+  private static List<String> allowedActions(ADA_Diagnosis diagnosis) {
+    return isConfident(diagnosis)
+      ? new List<String>{ ACTION_EXPLAIN, ACTION_RAISE_BUG }
+      : new List<String>{ ACTION_RAISE_BUG };
+  }
+
+  private static String headline(ADA_Diagnosis diagnosis) {
+    String kind = KIND.get(diagnosis.errorType);
+    String text = 'This looks like ' + (kind == null ? 'a problem' : kind);
+    if (String.isNotBlank(diagnosis.componentLabel)) {
+      text += ': ' + diagnosis.componentLabel;
+    }
+    return text + '.';
+  }
+
+  private static ADA_PayloadBuilder.Extras extrasFor(
+    ADA_Diagnosis diagnosis,
+    String userQuestion
+  ) {
+    ADA_PayloadBuilder.Extras extras = new ADA_PayloadBuilder.Extras();
+    extras.objectLabel = objectLabel(diagnosis.objectApiName);
+    extras.userQuestion = userQuestion == null
+      ? null
+      : userQuestion.left(MAX_QUESTION_INPUT);
+    extras.locale = UserInfo.getLocale();
+    extras.conditionFormulaMasked = maskedFormula(diagnosis);
+    for (String fieldName : diagnosis.fieldApiNames) {
+      String label = fieldLabel(diagnosis.objectApiName, fieldName);
+      if (label != null) {
+        extras.fieldLabels.add(label);
+      }
+    }
+    return extras;
+  }
+
+  private static String maskedFormula(ADA_Diagnosis diagnosis) {
+    if (
+      String.isBlank(diagnosis.componentApiName) ||
+      String.isBlank(diagnosis.componentType)
+    ) {
+      return null;
+    }
+    for (
+      ADA_Metadata_Index__c row : new ADA_ObjectIndexStore()
+        .forObjectAndType(diagnosis.objectApiName, diagnosis.componentType)
+    ) {
+      if (row.Api_Name__c == diagnosis.componentApiName) {
+        return row.Formula_Masked__c;
+      }
+    }
+    return null;
+  }
+
+  private static String objectFor(String recordId) {
+    if (String.isBlank(recordId)) {
+      return null;
+    }
+    try {
+      return Id.valueOf(recordId)
+        .getSObjectType()
+        .getDescribe(SObjectDescribeOptions.DEFERRED)
+        .getName();
+    } catch (Exception notAnId) {
+      return null;
+    }
+  }
+
+  private static Schema.DescribeSObjectResult describe(String objectApiName) {
+    if (String.isBlank(objectApiName)) {
+      return null;
+    }
+    try {
+      Type objectType = Type.forName(objectApiName);
+      if (objectType == null) {
+        return null;
+      }
+      return ((SObject) objectType.newInstance())
+        .getSObjectType()
+        .getDescribe(SObjectDescribeOptions.DEFERRED);
+    } catch (Exception unknownObject) {
+      return null;
+    }
+  }
+
+  private static String objectLabel(String objectApiName) {
+    Schema.DescribeSObjectResult described = describe(objectApiName);
+    return described == null ? objectApiName : described.getLabel();
+  }
+
+  private static String fieldLabel(String objectApiName, String fieldName) {
+    Schema.DescribeSObjectResult described = describe(objectApiName);
+    if (described == null) {
+      return null;
+    }
+    Schema.SObjectField field = described.fields.getMap().get(fieldName);
+    return field == null ? null : field.getDescribe().getLabel();
+  }
+
+  private static AuraHandledException fail(String message) {
+    AuraHandledException problem = new AuraHandledException(message);
+    problem.setMessage(message);
+    return problem;
+  }
+}

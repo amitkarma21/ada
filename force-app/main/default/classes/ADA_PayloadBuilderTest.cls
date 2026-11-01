@@ -170,4 +170,57 @@ private class ADA_PayloadBuilderTest {
       ADA_PayloadBuilder.forLlm(diagnosis(), extras).locale
     );
   }
+
+  @IsTest
+  static void theWorkItemBodyCarriesOnlyTitleDescriptionAndTags() {
+    ADA_PayloadBuilder.WorkItemBody body = ADA_PayloadBuilder.forWorkItem(
+      diagnosis(),
+      'abc123',
+      'I tried twice and it still fails.'
+    );
+    Map<String, Object> parsed = (Map<String, Object>) JSON.deserializeUntyped(
+      ADA_PayloadBuilder.toJson(body)
+    );
+    Assert.areEqual(
+      new Set<String>{ 'title', 'description', 'tags' },
+      parsed.keySet()
+    );
+    Assert.areEqual(
+      'ADA: VALIDATION_RULE on Opportunity (Close_Date_Rule)',
+      body.title
+    );
+    Assert.areEqual('ADA; ADA-rule:Close_Date_Rule', body.tags);
+    Assert.isTrue(body.description.contains('Error type: VALIDATION_RULE'));
+    Assert.isTrue(body.description.contains('Object: Opportunity'));
+    Assert.isTrue(body.description.contains('Component: Close Date Rule'));
+    Assert.isTrue(body.description.contains('Session: abc123'));
+    Assert.isTrue(body.description.contains('I tried twice'));
+  }
+
+  @IsTest
+  static void theWorkItemNotesAreScrubbedAndClipped() {
+    ADA_PayloadBuilder.WorkItemBody body = ADA_PayloadBuilder.forWorkItem(
+      diagnosis(),
+      'abc123',
+      'Mail jane@example.com.au or call 0412 345 678. ' + 'x'.repeat(5000)
+    );
+    Assert.isFalse(body.description.contains('jane@'));
+    Assert.isFalse(body.description.contains('345 678'));
+    Assert.isTrue(body.description.contains('[EMAIL]'));
+    Assert.isTrue(
+      body.description.length() < ADA_PayloadBuilder.MAX_NOTES + 600
+    );
+  }
+
+  @IsTest
+  static void aDiagnosisWithoutAComponentGetsTheBareTag() {
+    ADA_PayloadBuilder.WorkItemBody body = ADA_PayloadBuilder.forWorkItem(
+      ADA_Diagnosis.unknown(),
+      'abc123',
+      null
+    );
+    Assert.areEqual('ADA', body.tags);
+    Assert.areEqual('ADA: UNKNOWN', body.title);
+    Assert.isFalse(body.description.contains('null'));
+  }
 }

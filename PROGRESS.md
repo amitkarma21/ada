@@ -16,7 +16,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 1.4 | Classifier and matchers | | e2e | DONE | `.verify/20261031-171625-e2e` |
 | 1.5 | PII gate, HTTP gateway, payload builders | security | unit | DONE | `.verify/20261031-184350-unit` |
 | 1.6 | LLM providers | security | unit (+ live) | DONE | unit `.verify/20261031-192535-unit`; live PASS `.verify/20261031-195113-live` |
-| 1.7 | Agent controller and session | security | unit | TODO | |
+| 1.7 | Agent controller and session | security | unit | DONE | `.verify/20261101-174416-unit` |
 | 1.8 | Help panel (LWC) | | unit | TODO | |
 | 2.1 | Azure DevOps target | security | unit | TODO | |
 | 2.2 | Confirm-then-create flow | | e2e + live | TODO | |
@@ -30,6 +30,25 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 ## Step notes
 
 <!-- For each step: plan bullets, attempts, deviations, reviewer verdicts. Newest first. -->
+
+### 1.7 Agent controller and session
+Plan:
+- `ADA_ActionLogger`: the only writer of `ADA_Action_Log__c`. Inner `without sharing` writer inserts in system mode (owner = the running user), so `ADA_User` loses object-level create on the log (closes the 1.2 open point: no forged audit rows through the API). `ADA_PermissionsTest` is reworked to write through the logger. An entry with an idempotency key returns the existing row instead of inserting again (feedback double click).
+- `ADA_AgentSession`: server-side state. The `Diagnose` row holds a snapshot of the diagnosis (no error text, no record values) in `Result__c`; `load(key)` reads it in user mode with an `OwnerId = UserInfo.getUserId()` filter, so another user (even an admin with view-all) gets "session not found". Keys are random 128-bit hex. The client only ever sends the key.
+- `ADA_AgentController` (`@AuraEnabled`, each call is its own transaction): `diagnose(errorText, recordId)` (no callout; blank text rejected, object from the record id prefix), `explain(sessionKey, userQuestion)` (session reload, extras from the index row and Schema labels, `ADA_ExplanationService`, then log; low confidence short-circuits to the "not sure" answer with no callout), `proposeAction(sessionKey, actionType)` (no callout; payload from `ADA_PayloadBuilder.forWorkItem`; logs `Propose`), `recordFeedback(sessionKey, solved)`. Low confidence offers only `RAISE_BUG`.
+- Explain log row: `Target_System__c = LLM` and `Payload_Sent__c` = the exact body when a call was made; `Status__c` Success / Fallback / Blocked; blocked kinds and fallback reason go in `Result__c`.
+- Scope decisions: `REQUEST_ACCESS` is not offered until 3.1 (nothing to propose yet); the work-item payload carries no error text (the user's own notes, PII-gated, join it at confirm in 2.2), so nothing rendered by the platform is ever stored or sent.
+- Tests first: logger, session (two-user), controller full path with mocks (diagnose, startTest, explain, propose, feedback), low confidence, blocked and fallback rows, forged key and forged client state, payload builder for work items, egress canary extended.
+Result: unit PASS, `.verify/20261101-174416-unit`. 254 Apex tests, 0 failing, package coverage 97.9%, lowest class `ADA_ExplanationService` 92%.
+Deviations / findings:
+- Session state is the snapshot in the `Diagnose` row's `Result__c` (diagnosis fields only, no error text), read in user mode with an owner filter; an admin with view-all still gets "Session not found" (tested). Keys are 128-bit random hex; anything else is rejected before SOQL.
+- `ADA_User` no longer has create on `ADA_Action_Log__c` (and log fields are read-only): rows come only from `ADA_ActionLogger` (system-mode inner writer, row owned by the caller). A direct insert is denied (tested). Closes the 1.2 open point.
+- Feedback is idempotent per session (`<key>:Feedback`); a second click returns the first row.
+- `proposeAction` accepts only `RAISE_BUG` for now; the payload (`ADA_PayloadBuilder.forWorkItem`) holds title, description (metadata, confidence, session) and tags, no error text. User notes join at confirm (2.2) and are PII-scrubbed in the builder already.
+- Callout-before-DML in tests: `diagnose` writes a row, so tests call `explain` inside `Test.startTest()` (separate transaction, as with real LWC calls). In production each call is its own transaction; `explain` makes its callout before the log insert.
+- Apex: a parameter named `json` shadows the `JSON` class; renamed `stored`.
+- Not done: the egress canary was not extended with a controller flow; `explain` goes through `ADA_ExplanationService`, already canary-tested, and the controller tests assert the scrubbed question and logged body. Revisit in 2.2 when confirm is added.
+- Reviewers unavailable; self-review: all SOQL user mode except the logger's owner-scoped idempotency lookup and insert (system mode by design, scoped to the caller, no user-supplied values besides the key as a bind); the client sends only a key, question and action name, each validated server-side; LLM text never drives actions.
 
 ### 1.3 Metadata index
 Plan:

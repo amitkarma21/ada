@@ -54,10 +54,18 @@ private class ADA_PermissionsTest {
     );
   }
 
+  private static void writeLog(String key) {
+    ADA_ActionLogger.Entry entry = new ADA_ActionLogger.Entry();
+    entry.step = 'Diagnose';
+    entry.errorType = 'UNKNOWN';
+    entry.idempotencyKey = key;
+    ADA_ActionLogger.write(entry);
+  }
+
   @IsTest
-  static void userCreatesAndReadsOwnLogAndRequest() {
+  static void userReadsOwnLogWrittenByTheLoggerAndCreatesARequest() {
     System.runAs(userByAlias('adau1')) {
-      Database.insert(newLog('k-own'), AccessLevel.USER_MODE);
+      writeLog('k-own');
       ADA_Access_Request__c request = new ADA_Access_Request__c(
         Permission_Set_Group__c = 'Some_Group',
         Justification__c = 'Need it'
@@ -82,7 +90,7 @@ private class ADA_PermissionsTest {
   @IsTest
   static void userCannotSeeOtherUsersLogsOrRequests() {
     System.runAs(userByAlias('adau1')) {
-      Database.insert(newLog('k-u1'), AccessLevel.USER_MODE);
+      writeLog('k-u1');
       Database.insert(
         new ADA_Access_Request__c(Permission_Set_Group__c = 'Some_Group'),
         AccessLevel.USER_MODE
@@ -103,6 +111,7 @@ private class ADA_PermissionsTest {
   @IsTest
   static void userCannotEditLogsOrApprovalFields() {
     System.runAs(userByAlias('adau1')) {
+      Assert.isFalse(Schema.SObjectType.ADA_Action_Log__c.isCreateable());
       Assert.isFalse(Schema.SObjectType.ADA_Action_Log__c.isUpdateable());
       Assert.isFalse(Schema.SObjectType.ADA_Action_Log__c.isDeletable());
       Assert.isFalse(
@@ -154,7 +163,7 @@ private class ADA_PermissionsTest {
   @IsTest
   static void adminSeesEverythingAndManagesIt() {
     System.runAs(userByAlias('adau1')) {
-      Database.insert(newLog('k-for-admin'), AccessLevel.USER_MODE);
+      writeLog('k-for-admin');
     }
     System.runAs(userByAlias('adaadm')) {
       Assert.isTrue(
@@ -194,7 +203,7 @@ private class ADA_PermissionsTest {
 
   @IsTest
   static void duplicateIdempotencyKeyIsRejected() {
-    System.runAs(userByAlias('adau1')) {
+    System.runAs(userByAlias('adaadm')) {
       Database.insert(newLog('k-dup'), AccessLevel.USER_MODE);
       Database.SaveResult result = Database.insert(
         newLog('k-dup'),
