@@ -235,7 +235,7 @@ Deviations / findings:
 | Phase | Gate report | Result | Human approval |
 | --- | --- | --- | --- |
 | 0 | `docs/reports/phase-0.md` | PASS | "go" (2026-10-27) |
-| 1 | | | |
+| 1 | `docs/reports/phase-1.md` | PASS (e2e `.verify/20261104-195603-e2e`) | Phase 1 — awaiting human approval |
 | 2 | | | |
 | 3 | | | |
 | 4 | | | |
