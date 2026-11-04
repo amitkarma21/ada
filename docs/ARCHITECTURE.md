@@ -139,7 +139,9 @@ Anything else is rejected and the Template provider answers instead.
 JSON Patch create with: `System.Title`, `System.Description` (HTML-escaped: error type,
 component, object, message template after the PII gate, the user's steps after the PII gate,
 confidence, session key, record link), `System.Tags` (`ADA; ADA-rule:<api name>`),
-`System.AreaPath`.
+`System.AreaPath` (only when set). The search is limited to open items; a hit links the existing
+item and creates nothing. The work item type, project and area path come from `ADA_Setting__mdt`;
+the record link is not sent.
 
 **To ServiceNow** (optional, after approval) — catalog order variables: permission label and API
 name, requester email, justification after the PII gate, Salesforce request ID.

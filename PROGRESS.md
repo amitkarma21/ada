@@ -18,7 +18,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 1.6 | LLM providers | security | unit (+ live) | DONE | unit `.verify/20261031-192535-unit`; live PASS `.verify/20261031-195113-live` |
 | 1.7 | Agent controller and session | security | unit | DONE | `.verify/20261101-174416-unit` |
 | 1.8 | Help panel (LWC) | | unit | DONE | unit PASS `.verify/20261101-235419-unit`; explanation quality improved (D-14). Human ran the demo in the dev org and said the answer is better (2026-11-04); further improvements to follow. |
-| 2.1 | Azure DevOps target | security | unit | TODO | |
+| 2.1 | Azure DevOps target | security | unit | DONE | unit PASS `.verify/20261104-203113-unit` (294 tests, 97.1%). No real Azure DevOps call yet; that needs the human's org, project and token (see note). |
 | 2.2 | Confirm-then-create flow | | e2e + live | TODO | |
 | 3.1 | Access checker and allowlist | security | unit | TODO | |
 | 3.2 | Approval process | HUMAN | unit + manual | TODO | |
@@ -30,6 +30,15 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 ## Step notes
 
 <!-- For each step: plan bullets, attempts, deviations, reviewer verdicts. Newest first. -->
+
+### 2.1 Azure DevOps target
+- Plan: tests first (`ADA_AzureDevOpsTargetTest`, 16 tests, with `ADA_AdoTestSupport`), then `ADA_AzureDevOpsTarget`, then the ADO path in the egress canary.
+- Built: WIQL search on the tag `ADA-rule:<api name>` limited to open items (a hit links the existing item), then a JSON Patch create. Errors 401/203, 403, 404, 429, 400 and other statuses give plain messages; server text is never echoed. Notes are HTML-escaped (`<script>` is neutralised). Returned links must be `https://`. A rule name outside `[A-Za-z0-9_]{1,80}` is refused before any callout.
+- Credential: Basic-auth External Credential, token pasted by the human (D-15). `scripts/setup-ado.sh` renders `setup/ado-template`, writes the ADO settings, keeps the org's LLM settings and assigns `ADA_ADO_Access`. Dry run validated 4 components against ada-dev; not deployed.
+- Finding: the PII gate does not recognise record names other than Account and Contact (for example an Opportunity name typed into notes). This is a known limit (D-15); the control is the payload preview in 2.2.
+- Static gate: the invariant check flagged URL literals and an `ADA_Demo` name in test support; fixed by renaming and by the `ada-allow-url` marker on https scheme checks and test fixtures. Code Analyzer flagged an empty catch block; restructured.
+- Review: the reviewer subagents are unavailable (404), so a manual security self-review was done (callouts only through the gateway, no secrets, no record values in payloads, canary green).
+- HUMAN for the live check in 2.2: create an Azure DevOps org, a test project and a token (Work Items read and write), run `scripts/setup-ado.sh`, then paste the token into the `ADA_AzureDevOps_Principal` (Username `ada`, Password = the token).
 
 ### 1.8 Help panel (LWC)
 Plan:
@@ -235,7 +244,7 @@ Deviations / findings:
 | Phase | Gate report | Result | Human approval |
 | --- | --- | --- | --- |
 | 0 | `docs/reports/phase-0.md` | PASS | "go" (2026-10-27) |
-| 1 | `docs/reports/phase-1.md` | PASS (e2e `.verify/20261104-195603-e2e`) | Phase 1 — awaiting human approval |
+| 1 | `docs/reports/phase-1.md` | PASS (e2e `.verify/20261104-195603-e2e`) | "go" (2026-11-04) |
 | 2 | | | |
 | 3 | | | |
 | 4 | | | |

@@ -98,3 +98,18 @@ in which case the Template falls back to the rule's message and field labels. A 
 label map is passed to the Template only and is never sent. Cached explanations carry a version
 (`ADA_ExplanationCache.VERSION`) so answers written under an older prompt or contract are
 regenerated; raise it whenever the prompt or the contract changes.
+
+## D-15 Azure DevOps access token as a Basic-auth External Credential — ACCEPTED
+Decided 2026-11-04 for step 2.1. Azure DevOps accepts a personal access token as the password of an
+HTTP Basic header (any username). The `ADA_AzureDevOps` External Credential therefore uses the
+`Basic` protocol and the Named Credential generates the `Authorization` header itself, so no token
+or header formula appears in code, settings or scripts; the human pastes it into the principal
+(`scripts/setup-ado.sh` prints the steps). The URL (`https://dev.azure.com/<org>`) is set at setup
+from `setup/ado-template`, as for the LLM (D-13). Project, area path and work item type are in
+`ADA_Setting__mdt`. Dedupe is a WIQL search on the `ADA-rule:<api name>` tag, limited to open items
+(not Closed, Done or Removed): a hit links the existing item and creates nothing. The rule name must
+match `[A-Za-z0-9_]{1,80}` before it enters the query, otherwise nothing is sent. Links returned to
+the UI must be `https://`. Per-user OAuth (Entra ID) is the pre-listing replacement (4.3).
+Known limit: the PII gate scrubs Account and Contact names, emails, phones, TFNs and cards in the
+user's notes, not other record names (an Opportunity name typed in the notes is not recognised).
+The control for that is the exact payload preview the user confirms in 2.2.

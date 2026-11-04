@@ -106,7 +106,7 @@ private class ADA_EgressCanaryTest {
     }
   }
 
-  // Each later step adds its own flow here: propose (1.9), confirm (1.10).
+  // Each later step adds its own flow here: confirm (2.2).
   @IsTest
   static void diagnoseThenExplainSendsNoRecordValue() {
     seedCanaryRecords();
@@ -206,6 +206,46 @@ private class ADA_EgressCanaryTest {
       outcome.payloadSent.contains(EMAIL),
       'The logged payload must be the scrubbed body'
     );
+  }
+
+  @IsTest
+  static void theAzureDevOpsPathSendsNoRecordValue() {
+    seedCanaryRecords();
+    Recorder recorder = new Recorder();
+    recorder.body = '{"workItems":[],"id":42}';
+    Test.setMock(HttpCalloutMock.class, recorder);
+
+    Test.startTest();
+    ADA_Diagnosis rule = ADA_DiagnosisService.diagnose(
+      'Opportunity',
+      'Opportunities over 100,000 need a description.',
+      store()
+    );
+    rule.description = 'Raised for ' + EMAIL + ' on ' + ACCOUNT_NAME;
+    ADA_PayloadBuilder.WorkItemBody body = ADA_PayloadBuilder.forWorkItem(
+      rule,
+      'abc123',
+      'Why can\'t I save ' +
+        ACCOUNT_NAME +
+        '? Reply to ' +
+        EMAIL +
+        ' or ring 0412 345 678. <script>alert(1)</script>'
+    );
+    ADA_ActionResult result = new ADA_AzureDevOpsTarget(
+        ADA_AdoTestSupport.setting()
+      )
+      .submit('canary-key', ADA_PayloadBuilder.toJson(body));
+    Test.stopTest();
+
+    Assert.isTrue(result.success, result.message);
+    Assert.areEqual(2, recorder.requests.size());
+    assertNoCanary(recorder);
+    String created = recorder.requests[1];
+    Assert.isTrue(created.contains('[NAME]'), created);
+    Assert.isTrue(created.contains('[EMAIL]'), created);
+    Assert.isTrue(created.contains('[PHONE]'), created);
+    Assert.isFalse(created.contains('<script'), created);
+    Assert.isTrue(created.contains('Large_Deal_Rule'));
   }
 
   @IsTest
