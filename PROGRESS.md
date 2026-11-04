@@ -19,7 +19,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 1.7 | Agent controller and session | security | unit | DONE | `.verify/20261101-174416-unit` |
 | 1.8 | Help panel (LWC) | | unit | DONE | unit PASS `.verify/20261101-235419-unit`; explanation quality improved (D-14). Human ran the demo in the dev org and said the answer is better (2026-11-04); further improvements to follow. |
 | 2.1 | Azure DevOps target | security | unit | DONE | unit PASS `.verify/20261104-203113-unit` (294 tests, 97.1%). No real Azure DevOps call yet; that needs the human's org, project and token (see note). |
-| 2.2 | Confirm-then-create flow | | e2e + live | TODO | |
+| 2.2 | Confirm-then-create flow | | e2e | DONE | e2e PASS `.verify/20261104-210830-e2e` (317 Apex tests, 97.1%, golden 11/11, Jest 45). Bug report goes by email (D-16); not yet sent to a real inbox (needs the human's address, see note). |
 | 3.1 | Access checker and allowlist | security | unit | TODO | |
 | 3.2 | Approval process | HUMAN | unit + manual | TODO | |
 | 3.3 | Request flow end to end | | e2e (+ live) | TODO | |
@@ -30,6 +30,17 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 ## Step notes
 
 <!-- For each step: plan bullets, attempts, deviations, reviewer verdicts. Newest first. -->
+
+### 2.2 Confirm-then-create flow (email, D-16)
+- Change of plan: the user chose email over Azure DevOps for "raise a bug" (D-16). The Azure DevOps target (2.1) stays built and tested but is not wired in. The plan's `live` gate for 2.2 is replaced by `e2e` because a live send needs the human's address.
+- Plan: tests first for each piece. `ADA_EmailTarget` (13 tests), `ADA_ActionLogger.findSuccess`, `proposeAction` with notes and `confirmAction` in `ADA_AgentController`, then LWC `adaActionPreview` and the help panel, then the egress canary.
+- Built: one plain-text email to `Bug_Report_Email__c`; the recipient is not user-controlled; the subject is one line (no header injection); the PII check runs on subject and body before sending and a hit is Blocked with kinds only. Idempotency key `<session>:RAISE_BUG`: a second confirm returns "already sent". Only a success stores the key, so a failed send can be retried.
+- LWC: `adaActionPreview` shows the exact report, a notes box (2000 chars), "Update preview" and "Send to my admin team". Confirm is disabled while the notes differ from the preview, while busy, and after a success. Server text is shown as text only.
+- Finding: a session key that began with digits could match the phone pattern and block a report. `ADA_AgentSession.newKey()` now always starts with a letter (test added).
+- Invariant check: the `.send(` grep flagged the email `Sender.send`; the interface method is now `deliver` (the invariant is unchanged).
+- Review: reviewer subagents unavailable (404); manual security self-review (recipient fixed, no record values in the body, canary tests for the email path green).
+- Limits: no dedupe by rule and no link back in the report (D-16). Needs Deliverability = All email.
+- HUMAN to do: `ADA_BUG_EMAIL=you@example.com scripts/setup-bug-email.sh ada-dev`, set Setup > Email > Deliverability to All email, then try the panel on a "not sure" error.
 
 ### 2.1 Azure DevOps target
 - Plan: tests first (`ADA_AzureDevOpsTargetTest`, 16 tests, with `ADA_AdoTestSupport`), then `ADA_AzureDevOpsTarget`, then the ADO path in the egress canary.

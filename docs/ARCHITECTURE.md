@@ -2,7 +2,7 @@
 
 Stage 1 (this build) runs entirely inside the customer's org as a managed package. The only
 external calls go to the customer's own accounts: an LLM (free Groq tier during the build),
-Azure DevOps and, optionally, ServiceNow. Access requests are approved by email through a
+Azure DevOps (parked, D-16) and, optionally, ServiceNow. Bug reports go by email for now (D-16). Access requests are approved by email through a
 Salesforce approval process. The vendor hosts nothing.
 
 ```
@@ -12,7 +12,7 @@ User ── adaHelpPanel (LWC, utility bar)
      ADA_AgentController ──► ADA_DiagnosisService ──► metadata index (ADA_Metadata_Index__c)
           │ 2 explain(sessionKey)                   callout → LLM via ADA_HttpGateway
           │ 3 proposeAction(sessionKey)             builds payload preview, no callout
-          │ 4 confirmAction(sessionKey, notes)      callout → Azure DevOps, or
+          │ 4 confirmAction(sessionKey, notes)      email → bug report address (D-16), or
           │                                         DML → ADA_Access_Request__c + approval email
           ▼
      ADA_Action_Log__c (every step, every payload sent)
@@ -27,7 +27,7 @@ User ── adaHelpPanel (LWC, utility bar)
 | `ADA_Metadata_Index__c` | Cached index of org metadata used for matching. Metadata only, never record data | `Object_Api_Name__c`, `Component_Type__c` (ValidationRule, RequiredField, Flow, ApexTrigger, DuplicateRule), `Api_Name__c`, `Label__c`, `Description__c`, `Message_Template__c`, `Message_Normalised__c`, `Formula_Masked__c`, `Field_Api_Names__c`, `Active__c`, `Source_Last_Modified__c`, `Indexed_At__c`, `Explanation_Json__c`, `Explained_For__c` (explanation cache, step 1.6) |
 | `ADA_Action_Log__c` | Audit and ROI log, one row per step | `Session_Key__c`, `Step__c` (Diagnose, Explain, Propose, Confirm, Act, Feedback), `Error_Type__c`, `Component_Api_Name__c`, `Confidence__c`, `Target_System__c` (None, LLM, AzureDevOps, ServiceNow, Email), `Payload_Sent__c` (long text, the exact body), `Result__c`, `External_Id__c`, `External_Url__c`, `Status__c`, `Idempotency_Key__c` (unique), `Feedback__c` (Solved, Not solved) |
 | `ADA_Access_Request__c` | Access request that goes through email approval | `Permission_Set_Group__c` (API name), `Permission_Label__c`, `Justification__c` (PII-gated), `Status__c` (Draft, Submitted, Approved, Rejected, Fulfilled), `Approver__c`, `Session_Key__c`, `ServiceNow_Number__c` |
-| `ADA_Setting__mdt` | One `Default` record | `LLM_Provider__c` (Template, OpenAICompatible, Anthropic), `LLM_Model__c`, `LLM_Timeout_Ms__c`, `Confidence_Threshold__c` (default 0.8), `ADO_Enabled__c`, `ADO_Project__c`, `ADO_Area_Path__c`, `ADO_Work_Item_Type__c` (Bug), `ServiceNow_Enabled__c`, `ServiceNow_Catalog_Item__c`, `Default_Approver_Username__c` |
+| `ADA_Setting__mdt` | One `Default` record | `LLM_Provider__c` (Template, OpenAICompatible, Anthropic), `LLM_Model__c`, `LLM_Timeout_Ms__c`, `Confidence_Threshold__c` (default 0.8), `Bug_Report_Email__c`, `ADO_Enabled__c`, `ADO_Project__c`, `ADO_Area_Path__c`, `ADO_Work_Item_Type__c` (Bug), `ServiceNow_Enabled__c`, `ServiceNow_Catalog_Item__c`, `Default_Approver_Username__c` |
 | `ADA_Allowed_Permission__mdt` | Permission set groups ADA may suggest | `Permission_Set_Group__c`, `Grants_Object__c`, `Grants_Field__c`, `Risk__c` (Low, Medium) |
 | `ADA_Pii_Pattern__mdt` | Regex patterns the PII gate blocks | `Regex__c`, `Active__c`, `Description__c` |
 
@@ -52,7 +52,7 @@ per supported LLM provider instead (decide in step 1.6, record in DECISIONS).
 | Index | `ADA_IMetadataIndexStore`, `ADA_ObjectIndexStore`, `ADA_ToolingClient`, `ADA_FormulaMasker`, `ADA_MetadataIndexJob` (Schedulable + Queueable chain) |
 | LLM | `ADA_ILlmProvider`, `ADA_TemplateProvider`, `ADA_OpenAiCompatibleProvider`, `ADA_LlmProviderFactory`, `ADA_PromptBuilder`, `ADA_LlmResponseValidator`, `ADA_ExplanationCache` |
 | Safety | `ADA_PiiGate`, `ADA_PayloadBuilder` (one typed builder per target), `ADA_HttpGateway` (the only class that sends `HttpRequest`) |
-| Actions | `ADA_IActionTarget`, `ADA_AzureDevOpsTarget`, `ADA_AccessRequestService`, `ADA_ServiceNowTarget` (optional), `ADA_ActionLogger` |
+| Actions | `ADA_IActionTarget`, `ADA_EmailTarget`, `ADA_AzureDevOpsTarget` (parked, D-16), `ADA_AccessRequestService`, `ADA_ServiceNowTarget` (optional), `ADA_ActionLogger` |
 
 ### LWC and permissions
 
@@ -76,11 +76,15 @@ caller owns it.
    this component + `Source_Last_Modified__c`, no callout. Otherwise one synchronous callout
    (timeout from settings, default 10 s) through `ADA_HttpGateway`, then validate, then log.
    Any error, timeout or HTTP 429 falls back to `ADA_TemplateProvider`.
-3. `proposeAction(sessionKey)` — builds the exact payload with `ADA_PayloadBuilder` and returns
-   it for display. No callout, logs `Propose`.
-4. `confirmAction(sessionKey, actionType, userNotes)` — PII-gate the notes; for `RAISE_BUG`,
-   dedupe search then create (two callouts), then log; for `REQUEST_ACCESS`, insert
-   `ADA_Access_Request__c` and submit it for approval.
+3. `proposeAction(sessionKey, actionType, userNotes)` — builds the exact payload with
+   `ADA_PayloadBuilder` (notes after the PII gate) and returns it for display with the notes the
+   preview was built from. Nothing is sent, logs `Propose`. The LWC re-calls it when the person
+   edits the notes, and will not confirm notes the preview does not show.
+4. `confirmAction(sessionKey, actionType, userNotes)` — for `RAISE_BUG`, the key is
+   `<sessionKey>:RAISE_BUG`; a logged success for that key returns "already sent" without sending.
+   Otherwise `ADA_EmailTarget` sends one plain-text email to `Bug_Report_Email__c`, then logs
+   `Confirm` (a key is stored only on success, so a failed send can be retried). For
+   `REQUEST_ACCESS` (phase 3), insert `ADA_Access_Request__c` and submit it for approval.
 5. `recordFeedback(sessionKey, solved)` — logs `Feedback` (drives the deflection metric).
 
 Low confidence (below `Confidence_Threshold__c`) always produces "I'm not sure what's blocking
@@ -143,17 +147,24 @@ confidence, session key, record link), `System.Tags` (`ADA; ADA-rule:<api name>`
 item and creates nothing. The work item type, project and area path come from `ADA_Setting__mdt`;
 the record link is not sent.
 
+**By email (bug reports, D-16)** — one plain-text `Messaging.SingleEmailMessage` to the single
+address in `ADA_Setting__mdt.Bug_Report_Email__c`; the user cannot choose or see the recipient.
+Subject: the generated title on one line, ≤ 200 chars. Body: the same `description` and `tags`
+the preview shows, after the PII gate. No HTML, no attachments, no cc or bcc, no activity logged.
+`ADA_PiiGate.detect` runs on subject and body just before sending; a hit blocks the send and logs
+`Status__c = Blocked` with kinds only. Email counts against the org's daily limit.
+
 **To ServiceNow** (optional, after approval) — catalog order variables: permission label and API
 name, requester email, justification after the PII gate, Salesforce request ID.
 
-**Email** — sent by Salesforce's own approval process; stays on Salesforce infrastructure.
+**Approval email** — sent by Salesforce's own approval process; stays on Salesforce infrastructure.
 
 **Never sent anywhere:** SObject field values, record Names, amounts, attachments, notes, Chatter
 or email text, rendered Apex/Flow messages (send the template from metadata instead), session
 IDs, credentials.
 
-`ADA_HttpGateway` runs a last-line check on every outgoing body against the PII patterns. A hit
-blocks the send and logs `Status__c = Blocked`. Canary values are never in production code:
+`ADA_HttpGateway` (HTTP) and `ADA_EmailTarget` (email) run a last-line check on every outgoing body
+against the PII patterns. A hit blocks the send and logs `Status__c = Blocked`. Canary values are never in production code:
 `ADA_EgressCanaryTest` seeds them and asserts against the bodies the mock recorded (test classes
 are the only package files allowed to contain canary values).
 

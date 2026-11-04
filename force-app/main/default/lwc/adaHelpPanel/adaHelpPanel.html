@@ -57,6 +57,15 @@
         onfeedback={handleFeedback}
         onreportrequest={handleReportRequest}
       ></c-ada-diagnosis-card>
+      <template lwc:if={proposal}>
+        <c-ada-action-preview
+          proposal={proposal}
+          result={confirmResult}
+          busy={busy}
+          onpreviewrefresh={handlePreviewRefresh}
+          onconfirm={handleConfirm}
+        ></c-ada-action-preview>
+      </template>
     </template>
   </div>
 </template>

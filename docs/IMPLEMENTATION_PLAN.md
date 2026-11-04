@@ -198,17 +198,20 @@ presents it, record in DECISIONS), `ADA_AzureDevOpsTarget` with WIQL dedupe on t
 **Gate:** `unit`.
 
 ### 2.2 Confirm-then-create flow
+Changed by D-16: the bug report is an email to `Bug_Report_Email__c`, not an Azure DevOps item.
 `proposeAction` returns the exact payload preview; `confirmAction(RAISE_BUG)` with an
-idempotency key; LWC `adaActionPreview` shows the fields and a Confirm button, then the link.
+idempotency key; LWC `adaActionPreview` shows the report, lets the person add notes, and has a
+Confirm button, then the result message.
 **Acceptance:**
-- Double confirm (same key) creates one work item.
-- Jest tests for preview, confirm, success link, error message.
-- `LIVE=1`: creates a bug in the free Azure DevOps test project; running the same case again
-  links to the existing bug instead of creating another.
-**Gate:** `e2e`, then `live`.
+- Double confirm (same key) sends one email.
+- A failed send is logged without the key and can be retried; a blocked send logs no payload.
+- Jest tests for preview, notes refresh, confirm, success message, error message.
+- Egress canary test covers the email path.
+- Not tested live: a real email needs the human's address and Deliverability set to All email.
+**Gate:** `e2e`.
 
-**Phase 2 gate:** `/phase-gate 2` with gate `live`. Demo: trigger the Apex-trigger error,
-choose "raise a bug", confirm, open the work item; repeat and see it deduplicated.
+**Phase 2 gate:** `/phase-gate 2`. Demo: trigger the Apex-trigger error, choose "prepare a
+report", add a note, confirm, receive the email; confirm again and see "already sent".
 
 ---
 

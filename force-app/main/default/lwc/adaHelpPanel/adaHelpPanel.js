@@ -3,6 +3,7 @@ import { CurrentPageReference } from "lightning/navigation";
 import diagnose from "@salesforce/apex/ADA_AgentController.diagnose";
 import explain from "@salesforce/apex/ADA_AgentController.explain";
 import proposeAction from "@salesforce/apex/ADA_AgentController.proposeAction";
+import confirmAction from "@salesforce/apex/ADA_AgentController.confirmAction";
 import recordFeedback from "@salesforce/apex/ADA_AgentController.recordFeedback";
 
 const GENERIC_ERROR = "Something went wrong. Try again.";
@@ -14,6 +15,7 @@ export default class AdaHelpPanel extends LightningElement {
   diagnosis = null;
   explanation = null;
   proposal = null;
+  confirmResult = null;
   feedbackGiven = false;
   errorMessage = null;
   busy = false;
@@ -69,6 +71,7 @@ export default class AdaHelpPanel extends LightningElement {
     this.diagnosis = null;
     this.explanation = null;
     this.proposal = null;
+    this.confirmResult = null;
     this.feedbackGiven = false;
     this.feedbackPending = false;
     try {
@@ -93,13 +96,52 @@ export default class AdaHelpPanel extends LightningElement {
     if (this.busy || this.proposal || !this.diagnosis) {
       return;
     }
+    await this.prepare("Preparing the report…", null);
+  }
+
+  async handlePreviewRefresh(event) {
+    if (this.busy || !this.proposal || this.confirmResult?.success) {
+      return;
+    }
+    await this.prepare("Updating the preview…", event.detail.notes);
+  }
+
+  async prepare(status, userNotes) {
     this.busy = true;
-    this.statusText = "Preparing the report…";
+    this.statusText = status;
     this.errorMessage = null;
     try {
       this.proposal = await proposeAction({
         sessionKey: this.diagnosis.sessionKey,
-        actionType: "RAISE_BUG"
+        actionType: "RAISE_BUG",
+        userNotes
+      });
+      this.confirmResult = null;
+    } catch (error) {
+      this.errorMessage = this.readError(error);
+    } finally {
+      this.busy = false;
+      this.statusText = "";
+    }
+  }
+
+  async handleConfirm(event) {
+    if (
+      this.busy ||
+      !this.proposal ||
+      !this.diagnosis ||
+      this.confirmResult?.success
+    ) {
+      return;
+    }
+    this.busy = true;
+    this.statusText = "Sending the report…";
+    this.errorMessage = null;
+    try {
+      this.confirmResult = await confirmAction({
+        sessionKey: this.diagnosis.sessionKey,
+        actionType: "RAISE_BUG",
+        userNotes: event.detail.notes
       });
     } catch (error) {
       this.errorMessage = this.readError(error);
@@ -132,6 +174,7 @@ export default class AdaHelpPanel extends LightningElement {
     this.diagnosis = null;
     this.explanation = null;
     this.proposal = null;
+    this.confirmResult = null;
     this.feedbackGiven = false;
     this.feedbackPending = false;
     this.errorMessage = null;

@@ -1,0 +1,61 @@
+<template>
+  <template lwc:if={proposal}>
+    <section
+      class="slds-box slds-theme_default slds-m-top_small"
+      aria-label="Report preview"
+    >
+      <h3 class="slds-text-title">Report ready to review</h3>
+      <p data-id="proposal-title">{proposal.title}</p>
+      <pre class="slds-text-font_monospace slds-scrollable_x" data-id="payload">
+{proposal.payloadJson}</pre>
+
+      <lightning-textarea
+        data-id="notes"
+        label="Add anything that would help"
+        max-length="2000"
+        value={draft}
+        disabled={notesLocked}
+        onchange={handleNotesChange}
+      ></lightning-textarea>
+
+      <div class="slds-m-top_small">
+        <template lwc:if={sent}>
+          <p data-id="result" role="status">{result.message}</p>
+        </template>
+        <template lwc:else>
+          <template lwc:if={failed}>
+            <p
+              class="slds-text-color_error slds-m-bottom_x-small"
+              data-id="result"
+              role="alert"
+            >
+              {result.message}
+            </p>
+          </template>
+          <p
+            class="slds-text-color_weak slds-m-bottom_x-small"
+            data-id="nothing-sent"
+          >
+            Nothing has been sent. Your admin team receives this only after you
+            confirm.
+          </p>
+          <lightning-button
+            data-id="refresh"
+            label="Update preview"
+            variant="neutral"
+            disabled={refreshDisabled}
+            onclick={handleRefresh}
+          ></lightning-button>
+          <lightning-button
+            class="slds-m-left_x-small"
+            data-id="confirm"
+            label="Send to my admin team"
+            variant="brand"
+            disabled={confirmDisabled}
+            onclick={handleConfirm}
+          ></lightning-button>
+        </template>
+      </div>
+    </section>
+  </template>
+</template>

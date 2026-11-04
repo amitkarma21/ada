@@ -3,6 +3,7 @@ public with sharing class ADA_AgentSession {
   private static final Integer MAX_FIELD_NAME = 80;
   private static final Integer MAX_LABEL = 120;
   private static final Integer MAX_DESCRIPTION = 500;
+  private static final String LEADING_LETTERS = 'abcdef';
   private static final Pattern KEY_SHAPE = Pattern.compile('[0-9a-f]{32}');
 
   public class SessionException extends Exception {
@@ -29,8 +30,16 @@ public with sharing class ADA_AgentSession {
     this.diagnosis = diagnosis;
   }
 
+  // The key goes into reports as plain text. A leading letter keeps a run of digits at its
+  // start from looking like a phone number to the PII gate.
   public static String newKey() {
-    return EncodingUtil.convertToHex(Crypto.generateAesKey(128));
+    String hex = EncodingUtil.convertToHex(Crypto.generateAesKey(128));
+    String first = hex.left(1);
+    if (first.isNumeric()) {
+      Integer at = Math.mod(Integer.valueOf(first), LEADING_LETTERS.length());
+      first = LEADING_LETTERS.substring(at, at + 1);
+    }
+    return first + hex.substring(1);
   }
 
   public static String snapshot(ADA_Diagnosis diagnosis) {

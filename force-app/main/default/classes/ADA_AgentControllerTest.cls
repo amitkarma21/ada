@@ -37,6 +37,42 @@ private class ADA_AgentControllerTest {
     return key;
   }
 
+  private class RecordingSender implements ADA_EmailTarget.Sender {
+    public List<Messaging.SingleEmailMessage> sent = new List<Messaging.SingleEmailMessage>();
+
+    public String deliver(Messaging.SingleEmailMessage message) {
+      sent.add(message);
+      return null;
+    }
+  }
+
+  private class FixedTarget implements ADA_IActionTarget {
+    public Integer calls = 0;
+    private final ADA_ActionResult result;
+
+    public FixedTarget(ADA_ActionResult result) {
+      this.result = result;
+    }
+
+    public String targetName() {
+      return 'Email';
+    }
+
+    public ADA_ActionResult submit(String idempotencyKey, String payloadJson) {
+      calls++;
+      return result;
+    }
+  }
+
+  private static RecordingSender emailTo(String address) {
+    RecordingSender sender = new RecordingSender();
+    ADA_EmailTarget.sender = sender;
+    ADA_AgentController.targetOverride = new ADA_EmailTarget(
+      new ADA_Setting__mdt(Bug_Report_Email__c = address)
+    );
+    return sender;
+  }
+
   private static List<ADA_Action_Log__c> logs(String step) {
     return [
       SELECT
@@ -98,7 +134,8 @@ private class ADA_AgentControllerTest {
 
       ADA_AgentController.ProposalView proposal = ADA_AgentController.proposeAction(
         key,
-        'RAISE_BUG'
+        'RAISE_BUG',
+        null
       );
       Assert.areEqual('RAISE_BUG', proposal.actionType);
       Assert.isTrue(proposal.requiresConfirmation);
@@ -162,8 +199,14 @@ private class ADA_AgentControllerTest {
       Assert.isTrue(e.getMessage().contains('Session not found'));
     }
     try {
-      ADA_AgentController.proposeAction(key, 'RAISE_BUG');
+      ADA_AgentController.proposeAction(key, 'RAISE_BUG', null);
       Assert.fail('propose must reject the session');
+    } catch (AuraHandledException e) {
+      Assert.isTrue(e.getMessage().contains('Session not found'));
+    }
+    try {
+      ADA_AgentController.confirmAction(key, 'RAISE_BUG', null);
+      Assert.fail('confirm must reject the session');
     } catch (AuraHandledException e) {
       Assert.isTrue(e.getMessage().contains('Session not found'));
     }
@@ -213,11 +256,16 @@ private class ADA_AgentControllerTest {
 
       ADA_AgentController.ProposalView proposal = ADA_AgentController.proposeAction(
         view.sessionKey,
-        'RAISE_BUG'
+        'RAISE_BUG',
+        null
       );
       Assert.isTrue(proposal.payloadJson.contains('UNKNOWN'));
       try {
-        ADA_AgentController.proposeAction(view.sessionKey, 'REQUEST_ACCESS');
+        ADA_AgentController.proposeAction(
+          view.sessionKey,
+          'REQUEST_ACCESS',
+          null
+        );
         Assert.fail('Only RAISE_BUG may be offered');
       } catch (AuraHandledException e) {
         Assert.isTrue(e.getMessage().contains('not available'));
@@ -378,6 +426,178 @@ private class ADA_AgentControllerTest {
   }
 
   @IsTest
+  static void aPreviewShowsTheScrubbedNotesAndNothingIsSent() {
+    RecordingSender sender = emailTo('bugs.inbox@example.com');
+    System.runAs(userByAlias('adagt1')) {
+      String key = ADA_AgentController.diagnose(UNMATCHED, OPPORTUNITY_ID)
+        .sessionKey;
+      ADA_AgentController.ProposalView preview = ADA_AgentController.proposeAction(
+        key,
+        'RAISE_BUG',
+        'Mail casey.person@example.com or ring 0412 345 678.'
+      );
+      Assert.isTrue(preview.payloadJson.contains('[EMAIL]'));
+      Assert.isTrue(preview.payloadJson.contains('[PHONE]'));
+      Assert.isFalse(preview.payloadJson.contains('casey.person@example.com'));
+      Assert.areEqual(
+        'Mail casey.person@example.com or ring 0412 345 678.',
+        preview.notes
+      );
+      ADA_AgentController.ProposalView plain = ADA_AgentController.proposeAction(
+        key,
+        'RAISE_BUG',
+        null
+      );
+      Assert.areEqual('', plain.notes);
+      Assert.isFalse(plain.payloadJson.contains('User notes'));
+      ADA_AgentController.ProposalView big = ADA_AgentController.proposeAction(
+        key,
+        'RAISE_BUG',
+        'n'.repeat(5000)
+      );
+      Assert.areEqual(2000, big.notes.length());
+    }
+    Assert.isTrue(sender.sent.isEmpty(), 'propose must not send');
+  }
+
+  @IsTest
+  static void confirmSendsOneEmailLogsItAndASecondConfirmDoesNotResend() {
+    RecordingSender sender = emailTo('bugs.inbox@example.com');
+    String key = diagnoseAs('adagt1');
+    String notes = 'Mail casey.person@example.com about this.';
+    ADA_AgentController.ConfirmView first;
+    ADA_AgentController.ConfirmView second;
+    Test.startTest();
+    System.runAs(userByAlias('adagt1')) {
+      first = ADA_AgentController.confirmAction(key, 'RAISE_BUG', notes);
+      second = ADA_AgentController.confirmAction(key, 'RAISE_BUG', notes);
+    }
+    Test.stopTest();
+
+    Assert.isTrue(first.success, first.message);
+    Assert.isFalse(first.alreadySent);
+    Assert.isTrue(second.success);
+    Assert.isTrue(second.alreadySent);
+    Assert.areEqual(1, sender.sent.size());
+    Assert.areEqual(
+      new List<String>{ 'bugs.inbox@example.com' },
+      sender.sent[0].getToAddresses()
+    );
+    Assert.isFalse(sender.sent[0].getPlainTextBody().contains('casey.person'));
+    Assert.isTrue(sender.sent[0].getPlainTextBody().contains('[EMAIL]'));
+    Assert.isTrue(sender.sent[0].getPlainTextBody().contains(key));
+
+    List<ADA_Action_Log__c> rows = logs('Confirm');
+    Assert.areEqual(1, rows.size());
+    Assert.areEqual('Email', rows[0].Target_System__c);
+    Assert.areEqual('Success', rows[0].Status__c);
+    Assert.areEqual(key, rows[0].Session_Key__c);
+    Assert.isTrue(rows[0].Payload_Sent__c.contains('ADA-rule:Close_Date_Rule'));
+    Assert.isFalse(rows[0].Payload_Sent__c.contains('casey.person'));
+  }
+
+  @IsTest
+  static void aFailedSendIsLoggedAndCanBeTriedAgain() {
+    String key = diagnoseAs('adagt1');
+    ADA_AgentController.ConfirmView failed;
+    ADA_AgentController.ConfirmView retried;
+    RecordingSender sender;
+    Test.startTest();
+    System.runAs(userByAlias('adagt1')) {
+      emailTo(null);
+      failed = ADA_AgentController.confirmAction(key, 'RAISE_BUG', null);
+      sender = emailTo('bugs.inbox@example.com');
+      retried = ADA_AgentController.confirmAction(key, 'RAISE_BUG', null);
+    }
+    Test.stopTest();
+
+    Assert.isFalse(failed.success);
+    Assert.areEqual('Failed', failed.status);
+    Assert.isTrue(failed.message.contains('admin'), failed.message);
+    Assert.isTrue(retried.success, retried.message);
+    Assert.isFalse(retried.alreadySent);
+    Assert.areEqual(1, sender.sent.size());
+    Assert.areEqual(2, logs('Confirm').size());
+    Assert.areEqual(
+      1,
+      [
+        SELECT COUNT()
+        FROM ADA_Action_Log__c
+        WHERE Step__c = 'Confirm' AND Status__c = 'Failed'
+      ]
+    );
+  }
+
+  @IsTest
+  static void aBlockedSendKeepsPersonalDataOutOfTheLog() {
+    FixedTarget target = new FixedTarget(
+      ADA_ActionResult.blocked('Email', 'Not sent: personal data (EMAIL).')
+    );
+    ADA_AgentController.targetOverride = target;
+    String key = diagnoseAs('adagt1');
+    ADA_AgentController.ConfirmView view;
+    System.runAs(userByAlias('adagt1')) {
+      view = ADA_AgentController.confirmAction(key, 'RAISE_BUG', 'note');
+    }
+    Assert.isFalse(view.success);
+    Assert.areEqual('Blocked', view.status);
+    Assert.areEqual(1, target.calls);
+    ADA_Action_Log__c row = logs('Confirm')[0];
+    Assert.areEqual('Blocked', row.Status__c);
+    Assert.isNull(row.Payload_Sent__c);
+  }
+
+  @IsTest
+  static void confirmAcceptsOnlyRaiseBugAndOnlyOnYourOwnSession() {
+    RecordingSender sender = emailTo('bugs.inbox@example.com');
+    String key = diagnoseAs('adagt1');
+    System.runAs(userByAlias('adagt1')) {
+      for (
+        String type : new List<String>{
+          null,
+          '',
+          'raise_bug ',
+          'REQUEST_ACCESS',
+          'DELETE_EVERYTHING'
+        }
+      ) {
+        try {
+          ADA_AgentController.confirmAction(key, type, null);
+          Assert.fail('Action should be rejected: ' + type);
+        } catch (AuraHandledException e) {
+          Assert.isTrue(e.getMessage().contains('not available'));
+        }
+      }
+    }
+    System.runAs(userByAlias('adagt2')) {
+      try {
+        ADA_AgentController.confirmAction(key, 'RAISE_BUG', null);
+        Assert.fail('A second user must not confirm');
+      } catch (AuraHandledException e) {
+        Assert.isTrue(e.getMessage().contains('Session not found'));
+      }
+    }
+    Assert.isTrue(sender.sent.isEmpty());
+    Assert.areEqual(0, logs('Confirm').size());
+  }
+
+  @IsTest
+  static void aNotSureSessionCanStillBeReported() {
+    RecordingSender sender = emailTo('bugs.inbox@example.com');
+    ADA_AgentController.ConfirmView view;
+    Test.startTest();
+    System.runAs(userByAlias('adagt1')) {
+      String key = ADA_AgentController.diagnose(UNMATCHED, OPPORTUNITY_ID)
+        .sessionKey;
+      view = ADA_AgentController.confirmAction(key, 'RAISE_BUG', null);
+    }
+    Test.stopTest();
+    Assert.isTrue(view.success, view.message);
+    Assert.areEqual(1, sender.sent.size());
+    Assert.isTrue(sender.sent[0].getSubject().contains('UNKNOWN'));
+  }
+
+  @IsTest
   static void aRawActionTypeIsValidatedOnTheServer() {
     System.runAs(userByAlias('adagt1')) {
       String key = ADA_AgentController.diagnose(RULE_MESSAGE, OPPORTUNITY_ID)
@@ -392,7 +612,7 @@ private class ADA_AgentControllerTest {
         }
       ) {
         try {
-          ADA_AgentController.proposeAction(key, type);
+          ADA_AgentController.proposeAction(key, type, null);
           Assert.fail('Action should be rejected: ' + type);
         } catch (AuraHandledException e) {
           Assert.isTrue(e.getMessage().contains('not available'));

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Bug_Report_Email__c</fullName>
+    <description
+  >Address that receives bug reports the user confirms. Set by an admin; users cannot change it.</description>
+    <label>Bug Report Email</label>
+    <required>false</required>
+    <type>Email</type>
+</CustomField>

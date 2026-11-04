@@ -136,7 +136,7 @@ describe("c-ada-diagnosis-card", () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the proposal as text and hides the report button", () => {
+  it("hides the report button once a proposal exists", () => {
     const element = build({
       diagnosis: { ...DIAGNOSIS, confident: false },
       proposal: {
@@ -145,9 +145,7 @@ describe("c-ada-diagnosis-card", () => {
       }
     });
     expect(q(element, "report")).toBeNull();
-    expect(q(element, "proposal-title").textContent).toBe("ADA: UNKNOWN");
-    expect(q(element, "payload").textContent).toBe('{"title":"ADA: UNKNOWN"}');
-    expect(q(element, "nothing-sent").textContent).toContain("Nothing");
+    expect(q(element, "payload")).toBeNull();
   });
 
   it("renders markup from the server as plain text", () => {
@@ -158,14 +156,12 @@ describe("c-ada-diagnosis-card", () => {
         summary: hostile,
         fixSteps: [hostile, "<script>window.pwned=2</script>"],
         source: "LLM"
-      },
-      proposal: { title: hostile, payloadJson: hostile }
+      }
     });
     expect(element.shadowRoot.querySelector("img")).toBeNull();
     expect(element.shadowRoot.querySelector("script")).toBeNull();
     expect(q(element, "headline").textContent).toBe(hostile);
     expect(q(element, "summary").textContent).toBe(hostile);
-    expect(q(element, "payload").textContent).toBe(hostile);
     expect(window.pwned).toBeUndefined();
   });
 });

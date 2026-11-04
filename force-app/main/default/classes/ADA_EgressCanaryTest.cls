@@ -37,6 +37,21 @@ private class ADA_EgressCanaryTest {
     }
   }
 
+  private class MailRecorder implements ADA_EmailTarget.Sender {
+    public List<String> messages = new List<String>();
+
+    public String deliver(Messaging.SingleEmailMessage message) {
+      messages.add(
+        String.join(message.getToAddresses(), ',') +
+          '\n' +
+          message.getSubject() +
+          '\n' +
+          message.getPlainTextBody()
+      );
+      return null;
+    }
+  }
+
   private static void seedCanaryRecords() {
     Account account = new Account(Name = ACCOUNT_NAME);
     insert account;
@@ -106,7 +121,7 @@ private class ADA_EgressCanaryTest {
     }
   }
 
-  // Each later step adds its own flow here: confirm (2.2).
+  // Each later step adds its own flow here.
   @IsTest
   static void diagnoseThenExplainSendsNoRecordValue() {
     seedCanaryRecords();
@@ -246,6 +261,67 @@ private class ADA_EgressCanaryTest {
     Assert.isTrue(created.contains('[PHONE]'), created);
     Assert.isFalse(created.contains('<script'), created);
     Assert.isTrue(created.contains('Large_Deal_Rule'));
+  }
+
+  @IsTest
+  static void theEmailPathSendsNoRecordValue() {
+    seedCanaryRecords();
+    MailRecorder mail = new MailRecorder();
+    ADA_EmailTarget.sender = mail;
+
+    ADA_Diagnosis rule = ADA_DiagnosisService.diagnose(
+      'Opportunity',
+      'Opportunities over 100,000 need a description.',
+      store()
+    );
+    rule.description = 'Raised for ' + EMAIL + ' on ' + ACCOUNT_NAME;
+    ADA_PayloadBuilder.WorkItemBody body = ADA_PayloadBuilder.forWorkItem(
+      rule,
+      'abc123',
+      'Why can\'t I save ' +
+        ACCOUNT_NAME +
+        '? Reply to ' +
+        EMAIL +
+        ' or ring 0412 345 678. <script>alert(1)</script>'
+    );
+    ADA_ActionResult result = new ADA_EmailTarget(
+        new ADA_Setting__mdt(Bug_Report_Email__c = 'admin@example.com')
+      )
+      .submit('canary-key', ADA_PayloadBuilder.toJson(body));
+
+    Assert.isTrue(result.success, result.message);
+    Assert.areEqual(1, mail.messages.size());
+    String sent = mail.messages[0];
+    for (String canary : CANARIES) {
+      Assert.isFalse(
+        sent.contains(canary),
+        'Canary ' + canary + ' left the org in: ' + sent
+      );
+    }
+    Assert.isTrue(sent.startsWith('admin@example.com\n'), sent);
+    Assert.isTrue(sent.contains('[NAME]'), sent);
+    Assert.isTrue(sent.contains('[EMAIL]'), sent);
+    Assert.isTrue(sent.contains('[PHONE]'), sent);
+    Assert.isTrue(sent.contains('Large_Deal_Rule'), sent);
+  }
+
+  @IsTest
+  static void aReportBuiltByHandThatHoldsPersonalDataIsNotEmailed() {
+    MailRecorder mail = new MailRecorder();
+    ADA_EmailTarget.sender = mail;
+    ADA_PayloadBuilder.WorkItemBody body = new ADA_PayloadBuilder.WorkItemBody();
+    body.title = 'Report';
+    body.description = 'Reply to ' + EMAIL;
+    body.tags = 'ADA';
+
+    ADA_ActionResult result = new ADA_EmailTarget(
+        new ADA_Setting__mdt(Bug_Report_Email__c = 'admin@example.com')
+      )
+      .submit('canary-key', JSON.serialize(body));
+
+    Assert.areEqual('Blocked', result.status);
+    Assert.isTrue(mail.messages.isEmpty(), 'A blocked report must not be sent');
+    Assert.isFalse(result.message.contains(EMAIL), result.message);
   }
 
   @IsTest

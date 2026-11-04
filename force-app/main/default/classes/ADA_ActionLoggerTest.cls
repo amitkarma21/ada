@@ -115,6 +115,32 @@ private class ADA_ActionLoggerTest {
   }
 
   @IsTest
+  static void findSuccessSeesOnlyTheOwnersSuccessfulRowForTheKey() {
+    System.runAs(userByAlias('adalog1')) {
+      Assert.isNull(ADA_ActionLogger.findSuccess(null));
+      Assert.isNull(ADA_ActionLogger.findSuccess('  '));
+      Assert.isNull(ADA_ActionLogger.findSuccess('send-1'));
+
+      ADA_ActionLogger.Entry done = entry('Confirm');
+      done.idempotencyKey = 'send-1';
+      done.externalId = '42';
+      ADA_ActionLogger.write(done);
+      ADA_ActionLogger.Entry failed = entry('Confirm');
+      failed.idempotencyKey = 'send-2';
+      failed.status = 'Failed';
+      ADA_ActionLogger.write(failed);
+
+      ADA_Action_Log__c found = ADA_ActionLogger.findSuccess('send-1');
+      Assert.isNotNull(found);
+      Assert.areEqual('42', found.External_Id__c);
+      Assert.isNull(ADA_ActionLogger.findSuccess('send-2'));
+    }
+    System.runAs(userByAlias('adalog2')) {
+      Assert.isNull(ADA_ActionLogger.findSuccess('send-1'));
+    }
+  }
+
+  @IsTest
   static void aMissingStepIsRejected() {
     ADA_ActionLogger.Entry bad = entry(null);
     try {

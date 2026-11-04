@@ -34,6 +34,18 @@ private class ADA_AgentSessionTest {
   }
 
   @IsTest
+  static void aKeyNeverStartsWithADigitSoItCannotLookLikeAPhoneNumber() {
+    for (Integer i = 0; i < 200; i++) {
+      String key = ADA_AgentSession.newKey();
+      Assert.isTrue(Pattern.matches('[a-f][0-9a-f]{31}', key), key);
+      Assert.isTrue(
+        ADA_PiiGate.detect('Session: ' + key).isEmpty(),
+        'Session key flagged: ' + key
+      );
+    }
+  }
+
+  @IsTest
   static void theSnapshotRoundTripsEveryField() {
     ADA_Diagnosis original = ADA_LlmTestSupport.diagnosis();
     original.fieldApiNames = new List<String>{ 'CloseDate', 'StageName' };

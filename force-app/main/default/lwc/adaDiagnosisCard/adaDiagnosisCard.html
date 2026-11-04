@@ -68,22 +68,6 @@
           ></lightning-button>
         </div>
       </template>
-
-      <template lwc:if={proposal}>
-        <div class="slds-m-top_small">
-          <h3 class="slds-text-title">Report ready to review</h3>
-          <p data-id="proposal-title">{proposal.title}</p>
-          <pre
-            class="slds-text-font_monospace slds-scrollable_x"
-            data-id="payload"
-          >
-{proposal.payloadJson}</pre>
-          <p class="slds-text-color_weak" data-id="nothing-sent">
-            Nothing has been sent. Your admin team receives this only after you
-            confirm.
-          </p>
-        </div>
-      </template>
     </section>
   </template>
 </template>

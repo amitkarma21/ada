@@ -113,3 +113,18 @@ the UI must be `https://`. Per-user OAuth (Entra ID) is the pre-listing replacem
 Known limit: the PII gate scrubs Account and Contact names, emails, phones, TFNs and cards in the
 user's notes, not other record names (an Opportunity name typed in the notes is not recognised).
 The control for that is the exact payload preview the user confirms in 2.2.
+
+## D-16 Bug reports go by email for now — ACCEPTED
+Decided 2026-11-04 for step 2.2. `RAISE_BUG` sends one plain-text email to `Bug_Report_Email__c` in
+`ADA_Setting__mdt` instead of creating an Azure DevOps work item. The user cannot choose or see the
+recipient, and nothing from the user goes into a header: the subject is the generated title with
+line breaks removed, the body is text only, and the address list is exactly the setting. The body is
+the same `WorkItemBody` the preview shows (title, description, tags) and the PII `detect` check runs
+on subject and body just before sending, as `ADA_HttpGateway` does for HTTP, so a blocked body is
+never sent. One report per session: the idempotency key is `<session key>:RAISE_BUG`, a second
+confirm returns the first result without sending. Only a success is logged under the key, so a
+failed send can be retried. Email has no dedupe by rule (the Azure DevOps target had one) and no
+link back; the log row is the audit trail. Sending counts against the org's daily email limit, and
+needs Deliverability set to All email (sandboxes default to system email only). `ADA_AzureDevOpsTarget`
+(D-15) stays built and tested but is not wired to the confirm flow; switching back is a change in
+`ADA_AgentController.confirmAction` only.

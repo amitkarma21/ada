@@ -30,6 +30,31 @@ public with sharing class ADA_ActionLogger {
     return new Writer().write(entry);
   }
 
+  // The caller's own successful row for this key, or null. Failed rows never count, so a
+  // failed send can be tried again.
+  public static ADA_Action_Log__c findSuccess(String idempotencyKey) {
+    if (String.isBlank(idempotencyKey)) {
+      return null;
+    }
+    return new Reader().find(idempotencyKey);
+  }
+
+  private without sharing class Reader {
+    public ADA_Action_Log__c find(String idempotencyKey) {
+      List<ADA_Action_Log__c> rows = [
+        SELECT Id, External_Id__c, External_Url__c, Result__c
+        FROM ADA_Action_Log__c
+        WHERE
+          Idempotency_Key__c = :idempotencyKey
+          AND OwnerId = :UserInfo.getUserId()
+          AND Status__c = 'Success'
+        WITH SYSTEM_MODE
+        LIMIT 1
+      ];
+      return rows.isEmpty() ? null : rows[0];
+    }
+  }
+
   private without sharing class Writer {
     public ADA_Action_Log__c write(Entry entry) {
       if (String.isNotBlank(entry.idempotencyKey)) {

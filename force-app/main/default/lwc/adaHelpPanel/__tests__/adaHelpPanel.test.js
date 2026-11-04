@@ -4,6 +4,7 @@ import AdaHelpPanel from "c/adaHelpPanel";
 import diagnose from "@salesforce/apex/ADA_AgentController.diagnose";
 import explain from "@salesforce/apex/ADA_AgentController.explain";
 import proposeAction from "@salesforce/apex/ADA_AgentController.proposeAction";
+import confirmAction from "@salesforce/apex/ADA_AgentController.confirmAction";
 import recordFeedback from "@salesforce/apex/ADA_AgentController.recordFeedback";
 
 jest.mock(
@@ -18,6 +19,11 @@ jest.mock(
 );
 jest.mock(
   "@salesforce/apex/ADA_AgentController.proposeAction",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/ADA_AgentController.confirmAction",
   () => ({ default: jest.fn() }),
   { virtual: true }
 );
@@ -77,6 +83,25 @@ function q(element, id) {
   return element.shadowRoot.querySelector(`[data-id="${id}"]`);
 }
 
+function preview(element) {
+  return element.shadowRoot.querySelector("c-ada-action-preview");
+}
+
+const PROPOSAL = {
+  sessionKey: KEY,
+  actionType: "RAISE_BUG",
+  title: "ADA: UNKNOWN",
+  payloadJson: '{"title":"ADA: UNKNOWN"}',
+  notes: "",
+  requiresConfirmation: true
+};
+
+async function propose(element) {
+  card(element).dispatchEvent(new CustomEvent("reportrequest"));
+  await flush();
+  await flush();
+}
+
 function card(element) {
   return element.shadowRoot.querySelector("c-ada-diagnosis-card");
 }
@@ -100,6 +125,7 @@ describe("c-ada-help-panel", () => {
     diagnose.mockReset();
     explain.mockReset();
     proposeAction.mockReset();
+    confirmAction.mockReset();
     recordFeedback.mockReset();
   });
 
@@ -213,23 +239,162 @@ describe("c-ada-help-panel", () => {
   it("prepares the report for a low-confidence answer and shows the preview", async () => {
     diagnose.mockResolvedValue(NOT_SURE);
     explain.mockResolvedValue(NOT_SURE_EXPLANATION);
-    proposeAction.mockResolvedValue({
+    proposeAction.mockResolvedValue(PROPOSAL);
+    const element = build();
+    await submit(element);
+    expect(preview(element)).toBeNull();
+    await propose(element);
+    expect(proposeAction).toHaveBeenCalledWith({
       sessionKey: KEY,
       actionType: "RAISE_BUG",
-      title: "ADA: UNKNOWN",
-      payloadJson: '{"title":"ADA: UNKNOWN"}',
-      requiresConfirmation: true
+      userNotes: null
+    });
+    expect(card(element).proposal.title).toBe("ADA: UNKNOWN");
+    expect(preview(element).proposal).toEqual(PROPOSAL);
+    expect(confirmAction).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the preview with the notes the person typed", async () => {
+    diagnose.mockResolvedValue(NOT_SURE);
+    explain.mockResolvedValue(NOT_SURE_EXPLANATION);
+    proposeAction.mockResolvedValueOnce(PROPOSAL);
+    const element = build();
+    await submit(element);
+    await propose(element);
+    const withNotes = { ...PROPOSAL, notes: "Happens on every save." };
+    proposeAction.mockResolvedValueOnce(withNotes);
+    preview(element).dispatchEvent(
+      new CustomEvent("previewrefresh", {
+        detail: { notes: "Happens on every save." }
+      })
+    );
+    await flush();
+    await flush();
+    expect(proposeAction).toHaveBeenLastCalledWith({
+      sessionKey: KEY,
+      actionType: "RAISE_BUG",
+      userNotes: "Happens on every save."
+    });
+    expect(preview(element).proposal).toEqual(withNotes);
+    expect(confirmAction).not.toHaveBeenCalled();
+  });
+
+  it("confirms once and shows the result, even if confirm is clicked twice", async () => {
+    diagnose.mockResolvedValue(NOT_SURE);
+    explain.mockResolvedValue(NOT_SURE_EXPLANATION);
+    proposeAction.mockResolvedValue(PROPOSAL);
+    let finish;
+    confirmAction.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    const element = build();
+    await submit(element);
+    await propose(element);
+    const detail = { detail: { notes: "" } };
+    preview(element).dispatchEvent(new CustomEvent("confirm", detail));
+    preview(element).dispatchEvent(new CustomEvent("confirm", detail));
+    await flush();
+    expect(q(element, "status").textContent).toContain("Sending");
+    expect(preview(element).busy).toBe(true);
+    finish({
+      sessionKey: KEY,
+      success: true,
+      status: "Success",
+      message: "Your admin team was emailed the report."
+    });
+    await flush();
+    await flush();
+    expect(confirmAction).toHaveBeenCalledTimes(1);
+    expect(confirmAction).toHaveBeenCalledWith({
+      sessionKey: KEY,
+      actionType: "RAISE_BUG",
+      userNotes: ""
+    });
+    expect(preview(element).result.success).toBe(true);
+    expect(preview(element).busy).toBe(false);
+    expect(q(element, "status").textContent).toBe("");
+  });
+
+  it("does not confirm again after a success", async () => {
+    diagnose.mockResolvedValue(NOT_SURE);
+    explain.mockResolvedValue(NOT_SURE_EXPLANATION);
+    proposeAction.mockResolvedValue(PROPOSAL);
+    confirmAction.mockResolvedValue({ success: true, message: "Sent." });
+    const element = build();
+    await submit(element);
+    await propose(element);
+    const detail = { detail: { notes: "" } };
+    preview(element).dispatchEvent(new CustomEvent("confirm", detail));
+    await flush();
+    await flush();
+    preview(element).dispatchEvent(new CustomEvent("confirm", detail));
+    await flush();
+    expect(confirmAction).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a failed send and allows another try", async () => {
+    diagnose.mockResolvedValue(NOT_SURE);
+    explain.mockResolvedValue(NOT_SURE_EXPLANATION);
+    proposeAction.mockResolvedValue(PROPOSAL);
+    confirmAction.mockResolvedValueOnce({
+      success: false,
+      status: "Failed",
+      message: "The report could not be sent."
     });
     const element = build();
     await submit(element);
-    card(element).dispatchEvent(new CustomEvent("reportrequest"));
+    await propose(element);
+    const detail = { detail: { notes: "" } };
+    preview(element).dispatchEvent(new CustomEvent("confirm", detail));
     await flush();
     await flush();
-    expect(proposeAction).toHaveBeenCalledWith({
-      sessionKey: KEY,
-      actionType: "RAISE_BUG"
+    expect(preview(element).result.message).toBe(
+      "The report could not be sent."
+    );
+    confirmAction.mockResolvedValueOnce({ success: true, message: "Sent." });
+    preview(element).dispatchEvent(new CustomEvent("confirm", detail));
+    await flush();
+    await flush();
+    expect(confirmAction).toHaveBeenCalledTimes(2);
+    expect(preview(element).result.success).toBe(true);
+  });
+
+  it("shows a server error from confirm in an alert", async () => {
+    diagnose.mockResolvedValue(NOT_SURE);
+    explain.mockResolvedValue(NOT_SURE_EXPLANATION);
+    proposeAction.mockResolvedValue(PROPOSAL);
+    confirmAction.mockRejectedValue({
+      body: { message: "Session not found. Start again." }
     });
-    expect(card(element).proposal.title).toBe("ADA: UNKNOWN");
+    const element = build();
+    await submit(element);
+    await propose(element);
+    preview(element).dispatchEvent(
+      new CustomEvent("confirm", { detail: { notes: "" } })
+    );
+    await flush();
+    await flush();
+    expect(q(element, "error").textContent).toContain("Session not found");
+    expect(preview(element).busy).toBe(false);
+  });
+
+  it("clears the preview and result on start over", async () => {
+    diagnose.mockResolvedValue(NOT_SURE);
+    explain.mockResolvedValue(NOT_SURE_EXPLANATION);
+    proposeAction.mockResolvedValue(PROPOSAL);
+    confirmAction.mockResolvedValue({ success: true, message: "Sent." });
+    const element = build();
+    await submit(element);
+    await propose(element);
+    preview(element).dispatchEvent(
+      new CustomEvent("confirm", { detail: { notes: "" } })
+    );
+    await flush();
+    await flush();
+    q(element, "start-over").click();
+    await flush();
+    expect(preview(element)).toBeNull();
+    await submit(element, "Another problem.");
+    await propose(element);
+    expect(preview(element).result).toBeFalsy();
   });
 
   it("records feedback once and tells the card", async () => {

@@ -4,7 +4,11 @@ public with sharing class ADA_AgentController {
   public static final String ACTION_RAISE_BUG = 'RAISE_BUG';
   private static final Integer MAX_ERROR_TEXT = 4000;
   private static final Integer MAX_QUESTION_INPUT = 2000;
+  private static final Integer MAX_NOTES_INPUT = 2000;
   private static final Integer MAX_FORMULA_FIELDS = 40;
+
+  @TestVisible
+  private static ADA_IActionTarget targetOverride;
 
   private static final Map<ADA_ErrorType, String> KIND = new Map<ADA_ErrorType, String>{
     ADA_ErrorType.REQUIRED_FIELD => 'a required field',
@@ -65,7 +69,24 @@ public with sharing class ADA_AgentController {
     @AuraEnabled
     public String payloadJson;
     @AuraEnabled
+    public String notes;
+    @AuraEnabled
     public Boolean requiresConfirmation = true;
+  }
+
+  public class ConfirmView {
+    @AuraEnabled
+    public String sessionKey;
+    @AuraEnabled
+    public Boolean success;
+    @AuraEnabled
+    public String status;
+    @AuraEnabled
+    public String message;
+    @AuraEnabled
+    public String externalUrl;
+    @AuraEnabled
+    public Boolean alreadySent = false;
   }
 
   @AuraEnabled
@@ -141,20 +162,17 @@ public with sharing class ADA_AgentController {
   @AuraEnabled
   public static ProposalView proposeAction(
     String sessionKey,
-    String actionType
+    String actionType,
+    String userNotes
   ) {
     ADA_AgentSession session = load(sessionKey);
     ADA_Diagnosis diagnosis = session.diagnosis;
-    if (
-      actionType != ACTION_RAISE_BUG ||
-      !allowedActions(diagnosis).contains(actionType)
-    ) {
-      throw fail('That action is not available.');
-    }
+    requireAllowed(diagnosis, actionType);
+    String notes = notesFrom(userNotes);
     ADA_PayloadBuilder.WorkItemBody body = ADA_PayloadBuilder.forWorkItem(
       diagnosis,
       session.key,
-      null
+      notes
     );
     ADA_ActionLogger.Entry entry = entryFor(session.key, diagnosis, 'Propose');
     entry.result = 'Proposed ' + actionType + '. Nothing was sent.';
@@ -165,6 +183,57 @@ public with sharing class ADA_AgentController {
     view.actionType = actionType;
     view.title = body.title;
     view.payloadJson = ADA_PayloadBuilder.toJson(body);
+    view.notes = notes;
+    return view;
+  }
+
+  @AuraEnabled
+  public static ConfirmView confirmAction(
+    String sessionKey,
+    String actionType,
+    String userNotes
+  ) {
+    ADA_AgentSession session = load(sessionKey);
+    ADA_Diagnosis diagnosis = session.diagnosis;
+    requireAllowed(diagnosis, actionType);
+    String idempotencyKey = session.key + ':' + actionType;
+    ConfirmView view = new ConfirmView();
+    view.sessionKey = session.key;
+    ADA_Action_Log__c earlier = ADA_ActionLogger.findSuccess(idempotencyKey);
+    if (earlier != null) {
+      view.success = true;
+      view.status = 'Success';
+      view.alreadySent = true;
+      view.message = 'This report was already sent. Your admin team has it.';
+      view.externalUrl = earlier.External_Url__c;
+      return view;
+    }
+    String payload = ADA_PayloadBuilder.toJson(
+      ADA_PayloadBuilder.forWorkItem(
+        diagnosis,
+        session.key,
+        notesFrom(userNotes)
+      )
+    );
+    ADA_ActionResult result = (targetOverride == null
+        ? new ADA_EmailTarget()
+        : targetOverride)
+      .submit(idempotencyKey, payload);
+
+    ADA_ActionLogger.Entry entry = entryFor(session.key, diagnosis, 'Confirm');
+    entry.targetSystem = result.target;
+    entry.status = result.status;
+    entry.result = result.message;
+    entry.externalId = result.externalId;
+    entry.externalUrl = result.externalUrl;
+    entry.payloadSent = result.status == 'Blocked' ? null : payload;
+    entry.idempotencyKey = result.success ? idempotencyKey : null;
+    ADA_ActionLogger.write(entry);
+
+    view.success = result.success;
+    view.status = result.status;
+    view.message = result.message;
+    view.externalUrl = result.externalUrl;
     return view;
   }
 
@@ -208,6 +277,22 @@ public with sharing class ADA_AgentController {
       parts.add('fallback reason: ' + outcome.fallbackReason);
     }
     return String.join(parts, '; ');
+  }
+
+  private static void requireAllowed(
+    ADA_Diagnosis diagnosis,
+    String actionType
+  ) {
+    if (
+      actionType != ACTION_RAISE_BUG ||
+      !allowedActions(diagnosis).contains(actionType)
+    ) {
+      throw fail('That action is not available.');
+    }
+  }
+
+  private static String notesFrom(String userNotes) {
+    return userNotes == null ? '' : userNotes.left(MAX_NOTES_INPUT);
   }
 
   private static ADA_AgentSession load(String sessionKey) {
