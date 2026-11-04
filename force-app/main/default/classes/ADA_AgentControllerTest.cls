@@ -310,6 +310,31 @@ private class ADA_AgentControllerTest {
     String sent = logs('Explain')[0].Payload_Sent__c;
     Assert.isTrue(sent.contains('CloseDate < TODAY()'), sent);
     Assert.isTrue(sent.contains('objectLabel'), sent);
+    Assert.isTrue(sent.contains('ruleMessage'), sent);
+    Assert.isTrue(sent.contains(RULE_MESSAGE), sent);
+    Assert.isFalse(sent.contains('fieldLabelsByApiName'), sent);
+  }
+
+  @IsTest
+  static void theTemplateAnswerUsesTheRuleItsMessageAndItsFields() {
+    String key = diagnoseAs('adagt1');
+    ADA_AgentController.ExplanationView view;
+    Test.startTest();
+    System.runAs(userByAlias('adagt1')) {
+      view = ADA_AgentController.explain(key, null);
+    }
+    Test.stopTest();
+    Assert.areEqual('Template', view.source);
+    Assert.isTrue(view.summary.contains(RULE_MESSAGE), view.summary);
+    Assert.isTrue(view.summary.contains('all of these are true'), view.summary);
+    Assert.isTrue(
+      view.summary.contains('Close Date is earlier than today'),
+      view.summary
+    );
+    Assert.isTrue(
+      view.fixSteps.contains('Set Close Date to today or a later date.'),
+      String.join(view.fixSteps, ' | ')
+    );
   }
 
   @IsTest

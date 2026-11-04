@@ -125,6 +125,7 @@ payload builder. Nothing else may add fields.
 | `objectApiName`, `objectLabel` | Metadata |
 | `componentType`, `componentApiName`, `componentLabel`, `componentDescription` | Metadata, after the PII gate |
 | `conditionFormulaMasked` | Formula with every string literal replaced by `TEXT_n` and every 15/18-character ID by `ID_n` |
+| `ruleMessage` | The error message as the admin wrote it in metadata (never a rendered message), after the PII gate, ≤ 500 chars |
 | `fieldLabels` | Labels of fields involved |
 | `missingPermissionLabels` | Permission set group labels |
 | `userQuestion` | The user's own words after the PII gate (optional) |

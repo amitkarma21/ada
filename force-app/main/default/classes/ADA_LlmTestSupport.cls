@@ -72,7 +72,12 @@ public class ADA_LlmTestSupport {
     ADA_PayloadBuilder.Extras extras = new ADA_PayloadBuilder.Extras();
     extras.objectLabel = 'Opportunity';
     extras.conditionFormulaMasked = 'AND(NOT(IsClosed), CloseDate < TODAY())';
+    extras.ruleMessage = 'Close date cannot be in the past for an open opportunity.';
     extras.fieldLabels = new List<String>{ 'Close Date' };
+    extras.fieldLabelsByApiName = new Map<String, String>{
+      'CloseDate' => 'Close Date',
+      'IsClosed' => 'Closed'
+    };
     extras.locale = 'en_AU';
     return extras;
   }

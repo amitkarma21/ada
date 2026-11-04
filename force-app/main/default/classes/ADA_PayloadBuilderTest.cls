@@ -9,6 +9,7 @@ private class ADA_PayloadBuilderTest {
     'componentLabel',
     'componentDescription',
     'conditionFormulaMasked',
+    'ruleMessage',
     'fieldLabels',
     'missingPermissionLabels',
     'userQuestion',
@@ -29,6 +30,10 @@ private class ADA_PayloadBuilderTest {
     ADA_PayloadBuilder.Extras extras = new ADA_PayloadBuilder.Extras();
     extras.objectLabel = 'Opportunity';
     extras.conditionFormulaMasked = 'AND(NOT(IsClosed), CloseDate < TODAY())';
+    extras.ruleMessage = 'Close date cannot be in the past for an open opportunity.';
+    extras.fieldLabelsByApiName = new Map<String, String>{
+      'CloseDate' => 'Close Date'
+    };
     extras.fieldLabels = new List<String>{ 'Close Date', 'Closed' };
     extras.missingPermissionLabels = new List<String>{ 'Sales Operations' };
     extras.userQuestion = 'Why can I not save this deal?';
@@ -48,6 +53,14 @@ private class ADA_PayloadBuilderTest {
     Assert.areEqual('VALIDATION_RULE', parsed.get('errorType'));
     Assert.areEqual('Close_Date_Rule', parsed.get('componentApiName'));
     Assert.areEqual('en_AU', parsed.get('locale'));
+    Assert.areEqual(
+      'Close date cannot be in the past for an open opportunity.',
+      parsed.get('ruleMessage')
+    );
+    Assert.isFalse(
+      json.contains('fieldLabelsByApiName'),
+      'the label map is for the Template only'
+    );
     Assert.areEqual(
       'AND(NOT(IsClosed), CloseDate < TODAY())',
       parsed.get('conditionFormulaMasked')
@@ -141,6 +154,21 @@ private class ADA_PayloadBuilderTest {
       body.componentDescription.length()
     );
     Assert.areEqual(ADA_PayloadBuilder.MAX_LIST, body.fieldLabels.size());
+  }
+
+  @IsTest
+  static void theRuleMessageIsScrubbedAndCapped() {
+    ADA_PayloadBuilder.Extras extras = extras();
+    extras.ruleMessage = 'Email jane@example.com.au before you save.';
+    Assert.areEqual(
+      'Email [EMAIL] before you save.',
+      ADA_PayloadBuilder.forLlm(diagnosis(), extras).ruleMessage
+    );
+    extras.ruleMessage = 'm'.repeat(3000);
+    Assert.areEqual(
+      ADA_PayloadBuilder.MAX_MESSAGE,
+      ADA_PayloadBuilder.forLlm(diagnosis(), extras).ruleMessage.length()
+    );
   }
 
   @IsTest

@@ -1,0 +1,4 @@
+# Jest tests live beside the components but are never deployed or packaged.
+**/__tests__/**
+**/jsconfig.json
+**/.eslintrc.json

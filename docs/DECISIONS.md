@@ -85,3 +85,16 @@ The provider and model live in `ADA_Setting__mdt`; the key is pasted into the Ex
 principal and never passes through scripts or code. `ADA_AnthropicProvider` (later) would need its
 own credential because its request format differs. Revisit at the package gate (4.2) if a packaged
 credential's URL cannot be edited by subscribers.
+
+## D-14 Explanations quote the rule and read its condition — ACCEPTED
+Decided 2026-11-01 after the first manual demo returned generic guidance ("read the error message,
+update that value"). The index already holds the rule's configured message and masked condition, so:
+`ruleMessage` (metadata text, PII-gated, 500 chars) joins the LLM contract in ARCHITECTURE section 4;
+the system prompt now tells the model to explain the rule in business terms and name the field to
+change; and `ADA_FormulaReader` turns a masked formula into plain-English conditions and fix hints
+so the Template fallback is specific too, with no model involved. The reader never invents masked
+values ("one of the values the rule watches") and returns nothing when it cannot parse a formula,
+in which case the Template falls back to the rule's message and field labels. A field-API-name to
+label map is passed to the Template only and is never sent. Cached explanations carry a version
+(`ADA_ExplanationCache.VERSION`) so answers written under an older prompt or contract are
+regenerated; raise it whenever the prompt or the contract changes.

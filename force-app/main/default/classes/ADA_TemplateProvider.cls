@@ -1,4 +1,9 @@
 public with sharing class ADA_TemplateProvider implements ADA_ILlmProvider {
+  private static final Integer MAX_SUMMARY = 1200;
+  private static final Integer MAX_MESSAGE = 300;
+  private static final Integer MAX_FIXES = 3;
+  private static final Integer MAX_FIELDS = 8;
+
   public ADA_Explanation explain(
     ADA_Diagnosis diagnosis,
     ADA_PayloadBuilder.Extras extras
@@ -22,17 +27,7 @@ public with sharing class ADA_TemplateProvider implements ADA_ILlmProvider {
       );
     }
     if (type == ADA_ErrorType.VALIDATION_RULE) {
-      return result(
-        'A validation rule' +
-          name +
-          ' stopped the save because the record does not meet a condition your admin set.' +
-          detail,
-        new List<String>{
-          'Read the error message: it says which value needs to change.',
-          'Update that value so it meets the rule.',
-          'Save again. If the rule looks wrong for your case, ask your admin to review it.'
-        }
-      );
+      return validationRule(diagnosis, extras);
     }
     if (type == ADA_ErrorType.DUPLICATE_RULE) {
       return result(
@@ -65,6 +60,7 @@ public with sharing class ADA_TemplateProvider implements ADA_ILlmProvider {
         'An automation (flow)' +
           name +
           ' stopped the save and showed you its own message.' +
+          quoted(extras) +
           detail,
         new List<String>{
           'Read the message from the flow: it says what is missing.',
@@ -78,6 +74,7 @@ public with sharing class ADA_TemplateProvider implements ADA_ILlmProvider {
         'Custom code' +
           name +
           ' stopped the save and showed you its own message.' +
+          quoted(extras) +
           detail,
         new List<String>{
           'Read the message: it often says what needs to change.',
@@ -93,6 +90,112 @@ public with sharing class ADA_TemplateProvider implements ADA_ILlmProvider {
         'Send it to your admin with what you were trying to do.'
       }
     );
+  }
+
+  private static ADA_Explanation validationRule(
+    ADA_Diagnosis diagnosis,
+    ADA_PayloadBuilder.Extras extras
+  ) {
+    String message = messageOf(extras);
+    ADA_FormulaReader.Reading reading = extras == null
+      ? null
+      : ADA_FormulaReader.read(
+          extras.conditionFormulaMasked,
+          extras.fieldLabelsByApiName
+        );
+    List<String> fields = fieldNames(extras);
+    String summary =
+      'A validation rule' +
+      named(diagnosis) +
+      ' stopped the save';
+    summary += message == null &&
+      reading == null
+      ? ' because the record does not meet a condition your admin set.'
+      : '.';
+    if (message != null) {
+      summary += ' Its message says: "' + withStop(message) + '"';
+    }
+    if (reading != null) {
+      summary += ' ' + describe(reading);
+    }
+    summary += detail(diagnosis);
+    List<String> steps = new List<String>();
+    if (reading != null) {
+      for (String fix : reading.fixes) {
+        if (steps.size() < MAX_FIXES) {
+          steps.add(fix);
+        }
+      }
+    }
+    if (steps.isEmpty() && !fields.isEmpty()) {
+      steps.add(
+        'Check the fields the rule looks at: ' + String.join(fields, ', ') + '.'
+      );
+      steps.add(
+        'Change the value that does not meet the rule, as the error message describes.'
+      );
+    }
+    if (steps.isEmpty()) {
+      steps.add('Read the error message: it says which value needs to change.');
+      steps.add('Update that value so it meets the rule.');
+    }
+    steps.add('Save again.');
+    steps.add(
+      'If the rule looks wrong for your case, ask your admin to review it.'
+    );
+    return result(summary.abbreviate(MAX_SUMMARY), steps);
+  }
+
+  private static String describe(ADA_FormulaReader.Reading reading) {
+    String conditions = String.join(reading.conditions, '; ');
+    if (reading.mode == ADA_FormulaReader.MODE_ALL) {
+      return 'The rule blocks the save when all of these are true: ' +
+        conditions +
+        '. The save will go through as soon as any one of them is no longer true.';
+    }
+    if (reading.mode == ADA_FormulaReader.MODE_ANY) {
+      return 'The rule blocks the save when any one of these is true: ' +
+        conditions +
+        '. None of them can be true when you save.';
+    }
+    return 'The rule blocks the save when ' + conditions + '.';
+  }
+
+  private static String messageOf(ADA_PayloadBuilder.Extras extras) {
+    if (extras == null || String.isBlank(extras.ruleMessage)) {
+      return null;
+    }
+    return extras.ruleMessage.trim().abbreviate(MAX_MESSAGE);
+  }
+
+  private static String quoted(ADA_PayloadBuilder.Extras extras) {
+    String message = messageOf(extras);
+    return message == null ? '' : ' It said: "' + withStop(message) + '"';
+  }
+
+  private static String withStop(String message) {
+    return message.endsWith('.') ||
+      message.endsWith('!') ||
+      message.endsWith('?')
+      ? message
+      : message + '.';
+  }
+
+  private static List<String> fieldNames(ADA_PayloadBuilder.Extras extras) {
+    List<String> names = new List<String>();
+    if (extras == null) {
+      return names;
+    }
+    List<String> source = extras.fieldLabels.isEmpty() &&
+      extras.fieldLabelsByApiName != null
+      ? extras.fieldLabelsByApiName.values()
+      : extras.fieldLabels;
+    for (String name : source) {
+      if (String.isNotBlank(name) && names.size() < MAX_FIELDS) {
+        names.add(name);
+      }
+    }
+    return names;
   }
 
   public String lastPayload() {

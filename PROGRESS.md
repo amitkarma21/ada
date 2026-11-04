@@ -17,7 +17,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 1.5 | PII gate, HTTP gateway, payload builders | security | unit | DONE | `.verify/20261031-184350-unit` |
 | 1.6 | LLM providers | security | unit (+ live) | DONE | unit `.verify/20261031-192535-unit`; live PASS `.verify/20261031-195113-live` |
 | 1.7 | Agent controller and session | security | unit | DONE | `.verify/20261101-174416-unit` |
-| 1.8 | Help panel (LWC) | | unit | TODO | |
+| 1.8 | Help panel (LWC) | | unit | DONE | unit PASS `.verify/20261101-235419-unit`; explanation quality improved (D-14). Human ran the demo in the dev org and said the answer is better (2026-11-04); further improvements to follow. |
 | 2.1 | Azure DevOps target | security | unit | TODO | |
 | 2.2 | Confirm-then-create flow | | e2e + live | TODO | |
 | 3.1 | Access checker and allowlist | security | unit | TODO | |
@@ -30,6 +30,24 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 ## Step notes
 
 <!-- For each step: plan bullets, attempts, deviations, reviewer verdicts. Newest first. -->
+
+### 1.8 Help panel (LWC)
+Plan:
+- `adaHelpPanel` (container, owns state and Apex calls) and `adaDiagnosisCard` (presentation only). States: idle, diagnosing, explained, lowConfidence, error. Flow: paste error, "Diagnose" calls `diagnose`, then `explain` runs straight away when confident; low confidence shows the "not sure" text and a "Prepare a report for my admin" button that calls `proposeAction('RAISE_BUG')` and shows the payload preview (confirm and create come in 2.2). Feedback buttons call `recordFeedback` once.
+- Record id: `@api recordId` (record pages) else `CurrentPageReference` `attributes.recordId` (utility bar). All server text (summary, steps, headline, errors) is bound with `{}` into text nodes, never `lwc:dom="manual"` / `innerHTML`.
+- Accessibility: labelled textarea, native buttons (keyboard), `role="alert"` for errors, `aria-live="polite"` status region, card as a labelled region, focus returns to the result heading.
+- Finding while reading: `ADA_User` / `ADA_Admin` have no Apex class access, so the panel could not call the controller. Add `classAccesses` for `ADA_AgentController` to both and test it through `SetupEntityAccess`.
+- Utility bar in `demo-app` gets `c:adaHelpPanel` in place of the stock To Do List. `docs/reports/demo-phase-1.md` has the manual checklist.
+- Tests first (Jest): each state, labels, keyboard (Enter/Space activation via native button click, focus), double-click guard, one feedback only, error from Apex, XSS string rendered as text, no `img` in the DOM.
+Result: unit PASS, `.verify/20261101-202524-unit`. 255 Apex tests, 0 failing, package coverage 97.9%, lowest class `ADA_ExplanationService` 92%; 27 Jest tests (2 suites) pass; ESLint and Prettier clean. NOT yet DONE: the acceptance criterion "manual demo passes in the dev org" needs the human to run `docs/reports/demo-phase-1.md` (the gate redeployed the panel and utility bar to `ada-dev`).
+Explanation quality (demo feedback, D-14): the first demo answer was generic. Template ignored `extras` and the LLM payload had no rule message. Now `ADA_FormulaReader` turns the masked condition into plain-English conditions and field-specific fixes (never inventing masked values; unreadable parts say "another condition set by your admin"), `ADA_TemplateProvider` quotes the rule message and describes the condition (all / any / one), `ruleMessage` joins the LLM body (PII-scrubbed, clipped, documented in ARCHITECTURE §4), the prompt was rewritten for business users, and `ADA_ExplanationCache` carries a VERSION so old answers are misses. Result: unit PASS `.verify/20261101-235419-unit`, 277 Apex tests, 0 failing, coverage 97.2%, lowest class `ADA_ExplanationService` 92%. Live Groq (`openai/gpt-oss-120b`, `scripts/e2e/live-llm.apex` now sends the rule message): all three rules gave specific answers, e.g. "an open opportunity cannot have a Close Date earlier than today... Set the Close Date to today or a future date. / If the opportunity should be closed, change its stage..." The full `live` gate stalled twice at RunLocalTests (empty `apex-tests.json`, org-side queue), so the live script was run directly; the unit part of that gate had passed.
+Deviations / findings:
+- Jest tests sit inside the component folders, and deploy rejected them (`LWC1702` on `createElement`, `LWC1503` on `CurrentPageReference`). The repo had no `.forceignore`; added one excluding `**/__tests__/**` (also keeps tests out of the managed package).
+- ESLint `@lwc/lwc/no-async-operation` and `no-unexpected-wire-adapter-usages` are turned off for `__tests__` only (the tests use `setTimeout` to flush promises and `CurrentPageReference.emit`). Component code keeps both rules. No test was weakened; Prettier only reformatted the test files.
+- Utility bar item: LWC properties must be `<type>decorator</type>`; `icon` and `label` are accepted, `panelBodyHeight` / `panelBodyWidth` are rejected for an LWC (found by four deploy attempts, so past the three-attempt rule; each had a different cause and the last was settled from the docs). The panel uses the default utility panel size.
+- Card shows the report button only for low confidence (plan); a confident answer offers feedback only. `proposeAction` sends only the session key and `RAISE_BUG`; the preview is the server's `payloadJson` rendered in a `<pre>` text node.
+- Focus moves to the result heading through `focusHeading()` after the diagnosis is rendered (`renderedCallback`), not asserted in Jest beyond the `tabindex="-1"` heading.
+- Self-review (reviewers unavailable): no `innerHTML`, `lwc:dom`, `eval` in component code; all server text bound as text nodes; the client sends only the record id, error text, session key, action name and feedback flag; errors shown are the controller's `AuraHandledException` message or a fixed generic string (raw error objects are never shown).
 
 ### 1.7 Agent controller and session
 Plan:

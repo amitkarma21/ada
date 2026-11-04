@@ -1,4 +1,7 @@
 public with sharing class ADA_ExplanationCache {
+  @TestVisible
+  private static final Integer VERSION = 2;
+
   public ADA_Explanation find(ADA_Diagnosis diagnosis, String locale) {
     ADA_Metadata_Index__c row = row(diagnosis);
     if (
@@ -13,7 +16,7 @@ public with sharing class ADA_ExplanationCache {
       Map<String, Object> stored = (Map<String, Object>) JSON.deserializeUntyped(
         row.Explanation_Json__c
       );
-      if (stored.get('locale') != locale) {
+      if (stored.get('locale') != locale || stored.get('v') != VERSION) {
         return null;
       }
       ADA_Explanation explanation = ADA_LlmResponseValidator.fromContent(
@@ -42,6 +45,7 @@ public with sharing class ADA_ExplanationCache {
       'suggestedAction' => actionName(explanation.suggestedAction)
     };
     Map<String, Object> stored = new Map<String, Object>{
+      'v' => VERSION,
       'locale' => locale,
       'answer' => answer
     };

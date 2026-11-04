@@ -213,4 +213,25 @@ private class ADA_PermissionsTest {
       Assert.isFalse(result.isSuccess());
     }
   }
+
+  @IsTest
+  static void bothPermissionSetsCanRunTheHelpPanelController() {
+    for (String name : new List<String>{ 'ADA_User', 'ADA_Admin' }) {
+      Assert.areEqual(
+        1,
+        [
+          SELECT COUNT()
+          FROM SetupEntityAccess
+          WHERE
+            Parent.Name = :name
+            AND SetupEntityId IN (
+              SELECT Id
+              FROM ApexClass
+              WHERE Name = 'ADA_AgentController'
+            )
+        ],
+        name + ' needs access to ADA_AgentController'
+      );
+    }
+  }
 }

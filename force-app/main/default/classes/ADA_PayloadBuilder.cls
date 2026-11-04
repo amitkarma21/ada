@@ -2,6 +2,7 @@ public with sharing class ADA_PayloadBuilder {
   public static final Integer MAX_QUESTION = 500;
   public static final Integer MAX_DESCRIPTION = 500;
   public static final Integer MAX_FORMULA = 1000;
+  public static final Integer MAX_MESSAGE = 500;
   public static final Integer MAX_LABEL = 120;
   public static final Integer MAX_LIST = 20;
   public static final Integer MAX_NOTES = 2000;
@@ -9,7 +10,9 @@ public with sharing class ADA_PayloadBuilder {
   public class Extras {
     public String objectLabel;
     public String conditionFormulaMasked;
+    public String ruleMessage;
     public List<String> fieldLabels = new List<String>();
+    public Map<String, String> fieldLabelsByApiName = new Map<String, String>();
     public List<String> missingPermissionLabels = new List<String>();
     public String userQuestion;
     public String locale;
@@ -26,6 +29,7 @@ public with sharing class ADA_PayloadBuilder {
     public String componentLabel;
     public String componentDescription;
     public String conditionFormulaMasked;
+    public String ruleMessage;
     public List<String> fieldLabels;
     public List<String> missingPermissionLabels;
     public String userQuestion;
@@ -59,6 +63,10 @@ public with sharing class ADA_PayloadBuilder {
     body.conditionFormulaMasked = clip(
       ADA_FormulaMasker.mask(input.conditionFormulaMasked),
       MAX_FORMULA
+    );
+    body.ruleMessage = clip(
+      ADA_PiiGate.scrub(input.ruleMessage).text,
+      MAX_MESSAGE
     );
     body.fieldLabels = labels(input.fieldLabels);
     body.missingPermissionLabels = labels(input.missingPermissionLabels);

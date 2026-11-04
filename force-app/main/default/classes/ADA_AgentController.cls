@@ -4,6 +4,7 @@ public with sharing class ADA_AgentController {
   public static final String ACTION_RAISE_BUG = 'RAISE_BUG';
   private static final Integer MAX_ERROR_TEXT = 4000;
   private static final Integer MAX_QUESTION_INPUT = 2000;
+  private static final Integer MAX_FORMULA_FIELDS = 40;
 
   private static final Map<ADA_ErrorType, String> KIND = new Map<ADA_ErrorType, String>{
     ADA_ErrorType.REQUIRED_FIELD => 'a required field',
@@ -260,17 +261,43 @@ public with sharing class ADA_AgentController {
       ? null
       : userQuestion.left(MAX_QUESTION_INPUT);
     extras.locale = UserInfo.getLocale();
-    extras.conditionFormulaMasked = maskedFormula(diagnosis);
+    ADA_Metadata_Index__c row = indexRow(diagnosis);
+    if (row != null) {
+      extras.conditionFormulaMasked = row.Formula_Masked__c;
+      extras.ruleMessage = row.Message_Template__c;
+    }
     for (String fieldName : diagnosis.fieldApiNames) {
       String label = fieldLabel(diagnosis.objectApiName, fieldName);
       if (label != null) {
         extras.fieldLabels.add(label);
+        extras.fieldLabelsByApiName.put(fieldName, label);
+      }
+    }
+    for (String word : formulaWords(extras.conditionFormulaMasked)) {
+      if (!extras.fieldLabelsByApiName.containsKey(word)) {
+        String label = fieldLabel(diagnosis.objectApiName, word);
+        if (label != null) {
+          extras.fieldLabelsByApiName.put(word, label);
+        }
       }
     }
     return extras;
   }
 
-  private static String maskedFormula(ADA_Diagnosis diagnosis) {
+  private static Set<String> formulaWords(String maskedFormula) {
+    Set<String> names = new Set<String>();
+    if (String.isBlank(maskedFormula)) {
+      return names;
+    }
+    Matcher words = Pattern.compile('[A-Za-z][A-Za-z0-9_]*')
+      .matcher(maskedFormula);
+    while (words.find() && names.size() < MAX_FORMULA_FIELDS) {
+      names.add(words.group());
+    }
+    return names;
+  }
+
+  private static ADA_Metadata_Index__c indexRow(ADA_Diagnosis diagnosis) {
     if (
       String.isBlank(diagnosis.componentApiName) ||
       String.isBlank(diagnosis.componentType)
@@ -282,7 +309,7 @@ public with sharing class ADA_AgentController {
         .forObjectAndType(diagnosis.objectApiName, diagnosis.componentType)
     ) {
       if (row.Api_Name__c == diagnosis.componentApiName) {
-        return row.Formula_Masked__c;
+        return row;
       }
     }
     return null;

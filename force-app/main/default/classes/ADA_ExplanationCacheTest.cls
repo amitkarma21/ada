@@ -61,6 +61,18 @@ private class ADA_ExplanationCacheTest {
   }
 
   @IsTest
+  static void anAnswerFromAnOlderPromptIsAMiss() {
+    ADA_Metadata_Index__c row = ADA_LlmTestSupport.indexRow(MODIFIED);
+    row.Explained_For__c = MODIFIED;
+    row.Explanation_Json__c = '{"locale":"en_AU","answer":{"explanation":"Old","fixSteps":["One"],"suggestedAction":"NONE"}}';
+    insert row;
+    ADA_ExplanationCache cache = new ADA_ExplanationCache();
+    Assert.isNull(cache.find(ADA_LlmTestSupport.diagnosis(), 'en_AU'));
+    cache.store(ADA_LlmTestSupport.diagnosis(), 'en_AU', answer());
+    Assert.isNotNull(cache.find(ADA_LlmTestSupport.diagnosis(), 'en_AU'));
+  }
+
+  @IsTest
   static void aCorruptCacheEntryIsAMissNotAnError() {
     ADA_Metadata_Index__c row = ADA_LlmTestSupport.indexRow(MODIFIED);
     row.Explained_For__c = MODIFIED;

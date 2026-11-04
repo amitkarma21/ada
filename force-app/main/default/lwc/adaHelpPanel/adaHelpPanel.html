@@ -1,0 +1,62 @@
+<template>
+  <div class="slds-p-around_medium">
+    <lightning-textarea
+      data-id="error-text"
+      label="Paste the error message"
+      placeholder="Copy the red error message from the page and paste it here."
+      max-length="4000"
+      value={errorText}
+      onchange={handleTextChange}
+    ></lightning-textarea>
+
+    <div class="slds-m-top_small">
+      <lightning-button
+        data-id="diagnose"
+        label="Diagnose"
+        variant="brand"
+        disabled={diagnoseDisabled}
+        onclick={handleDiagnose}
+      ></lightning-button>
+      <template lwc:if={hasResult}>
+        <lightning-button
+          class="slds-m-left_x-small"
+          data-id="start-over"
+          label="Start over"
+          variant="neutral"
+          onclick={handleStartOver}
+        ></lightning-button>
+      </template>
+    </div>
+
+    <div
+      class="slds-m-top_small"
+      data-id="status"
+      role="status"
+      aria-live="polite"
+    >
+      {statusText}
+    </div>
+
+    <template lwc:if={errorMessage}>
+      <div
+        class="slds-text-color_error slds-m-top_small"
+        data-id="error"
+        role="alert"
+      >
+        {errorMessage}
+      </div>
+    </template>
+
+    <template lwc:if={diagnosis}>
+      <c-ada-diagnosis-card
+        diagnosis={diagnosis}
+        explanation={explanation}
+        proposal={proposal}
+        feedback-given={feedbackGiven}
+        busy={busy}
+        onfeedback={handleFeedback}
+        onreportrequest={handleReportRequest}
+      ></c-ada-diagnosis-card>
+    </template>
+  </div>
+</template>

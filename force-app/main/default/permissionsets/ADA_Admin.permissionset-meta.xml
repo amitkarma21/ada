@@ -12,6 +12,10 @@
         <enabled>true</enabled>
         <name>ADA_Setting__mdt</name>
     </customMetadataTypeAccesses>
+    <classAccesses>
+        <apexClass>ADA_AgentController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <description
   >Administer ADA: all logs, requests and the index, read settings.</description>
     <hasActivationRequired>false</hasActivationRequired>

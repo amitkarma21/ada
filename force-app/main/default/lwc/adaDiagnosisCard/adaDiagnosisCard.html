@@ -1,0 +1,89 @@
+<template>
+  <template lwc:if={diagnosis}>
+    <section
+      class="slds-box slds-theme_default slds-m-top_small"
+      aria-label="Diagnosis result"
+    >
+      <h2 class="slds-text-heading_small" data-id="headline" tabindex="-1">
+        {diagnosis.headline}
+      </h2>
+      <p class="slds-text-color_weak slds-m-top_xx-small" data-id="confidence">
+        {confidenceText}
+      </p>
+      <template lwc:if={showComponent}>
+        <p class="slds-m-top_xx-small" data-id="component">{componentText}</p>
+      </template>
+
+      <template lwc:if={explanation}>
+        <p class="slds-m-top_small" data-id="summary">{explanation.summary}</p>
+        <template lwc:if={hasSteps}>
+          <h3 class="slds-text-title slds-m-top_small">What to do</h3>
+          <ol class="slds-list_ordered">
+            <template for:each={steps} for:item="step">
+              <li key={step.key} data-id="step">{step.text}</li>
+            </template>
+          </ol>
+        </template>
+        <template lwc:if={showSource}>
+          <p class="slds-text-color_weak slds-m-top_small" data-id="source">
+            {sourceText}
+          </p>
+        </template>
+      </template>
+
+      <template lwc:if={showFeedback}>
+        <div class="slds-m-top_small">
+          <template lwc:if={feedbackGiven}>
+            <p data-id="thanks">Thanks for letting us know.</p>
+          </template>
+          <template lwc:else>
+            <p class="slds-m-bottom_x-small">Did this solve your problem?</p>
+            <lightning-button
+              data-id="solved"
+              label="Yes, solved"
+              variant="brand-outline"
+              disabled={busy}
+              onclick={handleSolved}
+            ></lightning-button>
+            <lightning-button
+              class="slds-m-left_x-small"
+              data-id="not-solved"
+              label="No, still stuck"
+              variant="neutral"
+              disabled={busy}
+              onclick={handleNotSolved}
+            ></lightning-button>
+          </template>
+        </div>
+      </template>
+
+      <template lwc:if={showReportButton}>
+        <div class="slds-m-top_small">
+          <lightning-button
+            data-id="report"
+            label="Prepare a report for my admin"
+            variant="brand"
+            disabled={busy}
+            onclick={handleReport}
+          ></lightning-button>
+        </div>
+      </template>
+
+      <template lwc:if={proposal}>
+        <div class="slds-m-top_small">
+          <h3 class="slds-text-title">Report ready to review</h3>
+          <p data-id="proposal-title">{proposal.title}</p>
+          <pre
+            class="slds-text-font_monospace slds-scrollable_x"
+            data-id="payload"
+          >
+{proposal.payloadJson}</pre>
+          <p class="slds-text-color_weak" data-id="nothing-sent">
+            Nothing has been sent. Your admin team receives this only after you
+            confirm.
+          </p>
+        </div>
+      </template>
+    </section>
+  </template>
+</template>

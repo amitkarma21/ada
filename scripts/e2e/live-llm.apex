@@ -15,7 +15,7 @@ try {
     // A typed question keeps this run free of cache writes, so every case can call out.
     extras.userQuestion = 'Why was I blocked and what should I do?';
     for (ADA_Metadata_Index__c row : [
-      SELECT Formula_Masked__c
+      SELECT Formula_Masked__c, Message_Template__c
       FROM ADA_Metadata_Index__c
       WHERE
         Component_Type__c = :diagnosis.componentType
@@ -24,6 +24,7 @@ try {
       LIMIT 1
     ]) {
       extras.conditionFormulaMasked = row.Formula_Masked__c;
+      extras.ruleMessage = row.Message_Template__c;
     }
     ADA_ExplanationService.Outcome outcome = ADA_ExplanationService.explain(
       diagnosis,

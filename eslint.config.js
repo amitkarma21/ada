@@ -19,6 +19,10 @@ module.exports = [
         beforeEach: "readonly",
         afterEach: "readonly"
       }
+    },
+    rules: {
+      "@lwc/lwc/no-async-operation": "off",
+      "@lwc/lwc/no-unexpected-wire-adapter-usages": "off"
     }
   }
 ];
