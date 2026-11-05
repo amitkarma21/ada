@@ -11,7 +11,7 @@ public virtual with sharing class ADA_TemplateMatcher implements ADA_IMatcher {
     this.componentType = componentType;
   }
 
-  public ADA_Diagnosis match(ADA_ErrorContext context) {
+  public virtual ADA_Diagnosis match(ADA_ErrorContext context) {
     if (!context.hasMessage()) {
       return null;
     }

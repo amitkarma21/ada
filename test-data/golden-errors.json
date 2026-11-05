@@ -120,6 +120,36 @@
         "type": "UNKNOWN",
         "componentApiName": null
       }
+    },
+    {
+      "id": "case-flow-fault-unhandled",
+      "object": "Case",
+      "message": "An unhandled fault has occurred in this flow\nAn unhandled fault has occurred while processing the flow. Please contact your system administrator for more information.",
+      "source": "manual",
+      "expected": {
+        "type": "FLOW",
+        "componentApiName": null
+      }
+    },
+    {
+      "id": "case-flow-fault-named-step",
+      "object": "Case",
+      "message": "Error element Update_Case (FlowRecordUpdate). This error occurred: ENTITY_IS_LOCKED. Flow API Name: ADA_Demo_Case_Escalation",
+      "source": "manual",
+      "expected": {
+        "type": "FLOW",
+        "componentApiName": "ADA_Demo_Case_Escalation"
+      }
+    },
+    {
+      "id": "unknown-flow-word-1",
+      "object": "Opportunity",
+      "message": "Cash flow must be positive.",
+      "source": "synthetic",
+      "expected": {
+        "type": "UNKNOWN",
+        "componentApiName": null
+      }
     }
   ]
 }

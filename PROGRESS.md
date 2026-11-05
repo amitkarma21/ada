@@ -20,6 +20,9 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 1.8 | Help panel (LWC) | | unit | DONE | unit PASS `.verify/20261101-235419-unit`; explanation quality improved (D-14). Human ran the demo in the dev org and said the answer is better (2026-11-04); further improvements to follow. |
 | 2.1 | Azure DevOps target | security | unit | DONE | unit PASS `.verify/20261104-203113-unit` (294 tests, 97.1%). No real Azure DevOps call yet; that needs the human's org, project and token (see note). |
 | 2.2 | Confirm-then-create flow | | e2e | DONE | e2e PASS `.verify/20261104-210830-e2e` (317 Apex tests, 97.1%, golden 11/11, Jest 45). Bug report goes by email (D-16); not yet sent to a real inbox (needs the human's address, see note). |
+| 2.5.1 | Flow fault matching | | e2e | DONE | e2e PASS `.verify/20261105-212332-e2e` (334 Apex tests, 97.2%, golden 14/14, Jest 45). |
+| 2.5.2 | Flow explainer | security | e2e | TODO | |
+| 2.5.3 | Error dashboard | | e2e | TODO | |
 | 3.1 | Access checker and allowlist | security | unit | TODO | |
 | 3.2 | Approval process | HUMAN | unit + manual | TODO | |
 | 3.3 | Request flow end to end | | e2e (+ live) | TODO | |
@@ -30,6 +33,14 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 ## Step notes
 
 <!-- For each step: plan bullets, attempts, deviations, reviewer verdicts. Newest first. -->
+
+### 2.5.1 Flow fault matching
+- Plan: tests first (`ADA_FlowErrorMatcherTest`, 16 tests), then the matcher, then three golden cases.
+- Built: `ADA_FlowErrorMatcher` still matches a flow's own custom error against the index first. If that is not a near-exact match and the message uses Salesforce's flow-fault wording (unhandled fault, `FLOW_ELEMENT_ERROR`, "error element X (FlowRecordUpdate)", "the flow tried to/failed to", "flow interview", "flow API name"), it answers FLOW at 0.9.
+- Naming the flow: only by API name (whole token) or a label of two or more words, active flows only; the longer name wins and a tie names nothing.
+- The failing step's name and kind go into the description; nothing after the step in the message is copied (it can hold record values).
+- Golden: added `case-flow-fault-unhandled`, `case-flow-fault-named-step`, `unknown-flow-word-1` ("Cash flow must be positive." stays UNKNOWN).
+- Gate note: the first e2e run failed only because the org still had the live LLM setting (`ADA_SettingTest` expects Template); redeploying the default setting fixed it.
 
 ### 2.2 Confirm-then-create flow (email, D-16)
 - Change of plan: the user chose email over Azure DevOps for "raise a bug" (D-16). The Azure DevOps target (2.1) stays built and tested but is not wired in. The plan's `live` gate for 2.2 is replaced by `e2e` because a live send needs the human's address.

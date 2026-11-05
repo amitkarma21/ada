@@ -215,6 +215,44 @@ report", add a note, confirm, receive the email; confirm again and see "already 
 
 ---
 
+## Phase 2.5 — Smarter flows and visibility (Slice 1)
+
+Added after the Phase 2 demo: the bot should handle Flow questions and show what is failing.
+Later slices (not yet planned in detail): follow-up chat, unknown-error queue, cited answers;
+repeat-offender alerts, failure ingestion, impact check.
+
+### 2.5.1 Flow fault matching
+Flow runtime faults ("An unhandled fault has occurred in this flow", `FLOW_ELEMENT_ERROR`,
+"flow interview" text) have no admin-written message to index, so they fall to UNKNOWN today.
+Recognise them by pattern, name the flow when the message carries its label or API name, and
+keep UNKNOWN for anything that is not clearly a flow fault.
+**Acceptance:**
+- New golden cases for fault messages; a non-flow message that mentions the word "flow" stays UNKNOWN.
+- A fault naming an indexed flow gives that flow as the component; one that names no flow gives FLOW with no component.
+- An admin-authored custom error still matches its indexed row first (no regression).
+**Gate:** `e2e`.
+
+### 2.5.2 Flow explainer
+Describe the flow that fired: trigger, object, entry criteria, and the failing element, from
+masked structure read through the Tooling API. The LLM sees masked structure only; the Template
+provider has a deterministic fallback.
+**Acceptance:**
+- Structure is masked like formulas (no literal values); ARCHITECTURE §4 and the canary tests change together with any new LLM field.
+- Template fallback names the trigger and entry criteria in plain words.
+**Gate:** `e2e`.
+
+### 2.5.3 Error dashboard
+Reports and a dashboard over `ADA_Action_Log__c`: top errors by component, object and week;
+deflection rate (solved over asked); unknown rate.
+**Acceptance:**
+- Metadata deploys; a permission set grants report access; no record values appear in any report column.
+**Gate:** `e2e`.
+
+**Slice 1 gate:** stop for human review. Demo: paste a flow fault, see the flow named and
+explained; open the dashboard.
+
+---
+
 ## Phase 3 — Request access, approved by email
 
 ### 3.1 Access checker and allowlist — security
