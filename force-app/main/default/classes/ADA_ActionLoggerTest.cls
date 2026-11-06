@@ -16,6 +16,7 @@ private class ADA_ActionLoggerTest {
     entry.step = step;
     entry.errorType = 'VALIDATION_RULE';
     entry.componentApiName = 'Close_Date_Rule';
+    entry.objectApiName = 'Opportunity';
     entry.confidence = 0.98;
     return entry;
   }
@@ -32,6 +33,7 @@ private class ADA_ActionLoggerTest {
           Step__c,
           Error_Type__c,
           Component_Api_Name__c,
+          Object_Api_Name__c,
           Confidence__c,
           Target_System__c,
           Status__c
@@ -44,9 +46,38 @@ private class ADA_ActionLoggerTest {
       Assert.areEqual('Diagnose', stored.Step__c);
       Assert.areEqual('VALIDATION_RULE', stored.Error_Type__c);
       Assert.areEqual('Close_Date_Rule', stored.Component_Api_Name__c);
+      Assert.areEqual('Opportunity', stored.Object_Api_Name__c);
       Assert.areEqual(0.98, stored.Confidence__c);
       Assert.areEqual('None', stored.Target_System__c);
       Assert.areEqual('Success', stored.Status__c);
+    }
+  }
+
+  @IsTest
+  static void rowsCarryTheCountsTheDashboardAdds() {
+    System.runAs(userByAlias('adalog1')) {
+      ADA_ActionLogger.Entry unknown = entry('Diagnose');
+      unknown.errorType = 'UNKNOWN';
+      ADA_ActionLogger.Entry solved = entry('Feedback');
+      solved.feedback = 'Solved';
+      ADA_ActionLogger.Entry notSolved = entry('Feedback');
+      notSolved.feedback = 'Not solved';
+      ADA_ActionLogger.write(entry('Diagnose'));
+      ADA_ActionLogger.write(unknown);
+      ADA_ActionLogger.write(solved);
+      ADA_ActionLogger.write(notSolved);
+      ADA_ActionLogger.write(entry('Explain'));
+      AggregateResult totals = [
+        SELECT
+          SUM(Asked_Count__c) asked,
+          SUM(Solved_Count__c) solved,
+          SUM(Unknown_Count__c) unknown
+        FROM ADA_Action_Log__c
+        WITH USER_MODE
+      ];
+      Assert.areEqual(2, totals.get('asked'));
+      Assert.areEqual(1, totals.get('solved'));
+      Assert.areEqual(1, totals.get('unknown'));
     }
   }
 

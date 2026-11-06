@@ -61,5 +61,12 @@ if grep -rniE "SeeAllData *= *true" "$PKG" --include="*.cls" >/dev/null 2>&1; th
   report "SeeAllData=true in a test class."
 fi
 
+# 8. Reports, report types and dashboards must not read the payload, result or link columns of the log.
+leaks="$(grep -rnE "Payload_Sent__c|Result__c|External_Id__c|External_Url__c|Session_Key__c|Idempotency_Key__c" "$PKG/main/default/reports" "$PKG/main/default/reportTypes" "$PKG/main/default/dashboards" 2>/dev/null || true)"
+if [[ -n "$leaks" ]]; then
+  report "A report, report type or dashboard reads a log column that can hold request data:"
+  echo "$leaks"
+fi
+
 [[ "$fail" == 0 ]] && echo "All invariant checks passed."
 exit "$fail"

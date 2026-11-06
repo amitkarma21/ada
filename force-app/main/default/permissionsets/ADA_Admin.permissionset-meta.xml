@@ -69,6 +69,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>ADA_Action_Log__c.Object_Api_Name__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>ADA_Action_Log__c.Confidence__c</field>
         <readable>true</readable>
     </fieldPermissions>

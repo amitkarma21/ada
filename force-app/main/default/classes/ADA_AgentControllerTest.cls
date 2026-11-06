@@ -84,6 +84,7 @@ private class ADA_AgentControllerTest {
         Feedback__c,
         Error_Type__c,
         Component_Api_Name__c,
+        Object_Api_Name__c,
         Confidence__c,
         Session_Key__c
       FROM ADA_Action_Log__c
@@ -151,6 +152,7 @@ private class ADA_AgentControllerTest {
     Assert.areEqual(key, diagnose.Session_Key__c);
     Assert.areEqual('VALIDATION_RULE', diagnose.Error_Type__c);
     Assert.areEqual('Close_Date_Rule', diagnose.Component_Api_Name__c);
+    Assert.areEqual('Opportunity', diagnose.Object_Api_Name__c);
     Assert.isFalse(diagnose.Result__c.contains('Close date cannot'));
     ADA_Action_Log__c explain = logs('Explain')[0];
     Assert.areEqual('LLM', explain.Target_System__c);

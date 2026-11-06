@@ -10,6 +10,7 @@ public with sharing class ADA_ActionLogger {
     public String step;
     public String errorType;
     public String componentApiName;
+    public String objectApiName;
     public Decimal confidence;
     public String targetSystem = 'None';
     public String payloadSent;
@@ -76,6 +77,7 @@ public with sharing class ADA_ActionLogger {
         Step__c = entry.step,
         Error_Type__c = entry.errorType,
         Component_Api_Name__c = entry.componentApiName,
+        Object_Api_Name__c = entry.objectApiName,
         Confidence__c = entry.confidence,
         Target_System__c = entry.targetSystem,
         Payload_Sent__c = clip(entry.payloadSent, MAX_PAYLOAD),

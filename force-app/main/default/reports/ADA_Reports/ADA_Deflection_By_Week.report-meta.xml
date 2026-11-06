@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <aggregates>
+        <calculatedFormula
+    >IF(ADA_Action_Log__c.Asked_Count__c:SUM = 0, 0, ADA_Action_Log__c.Solved_Count__c:SUM / ADA_Action_Log__c.Asked_Count__c:SUM)</calculatedFormula>
+        <datatype>percent</datatype>
+        <developerName>FORMULA1</developerName>
+        <downGroupingContext>GRAND_SUMMARY</downGroupingContext>
+        <isActive>true</isActive>
+        <masterLabel>Deflection rate</masterLabel>
+        <scale>1</scale>
+    </aggregates>
+    <aggregates>
+        <calculatedFormula
+    >IF(ADA_Action_Log__c.Asked_Count__c:SUM = 0, 0, ADA_Action_Log__c.Unknown_Count__c:SUM / ADA_Action_Log__c.Asked_Count__c:SUM)</calculatedFormula>
+        <datatype>percent</datatype>
+        <developerName>FORMULA2</developerName>
+        <downGroupingContext>GRAND_SUMMARY</downGroupingContext>
+        <isActive>true</isActive>
+        <masterLabel>Unknown rate</masterLabel>
+        <scale>1</scale>
+    </aggregates>
+    <columns>
+        <aggregateTypes>Sum</aggregateTypes>
+        <field>ADA_Action_Log__c$Asked_Count__c</field>
+    </columns>
+    <columns>
+        <aggregateTypes>Sum</aggregateTypes>
+        <field>ADA_Action_Log__c$Solved_Count__c</field>
+    </columns>
+    <columns>
+        <aggregateTypes>Sum</aggregateTypes>
+        <field>ADA_Action_Log__c$Unknown_Count__c</field>
+    </columns>
+    <description
+  >Per week: questions asked, answers marked solved, errors ADA could not classify, and the two rates. Deflection rate is solved divided by asked.</description>
+    <format>Summary</format>
+    <groupingsDown>
+        <dateGranularity>Week</dateGranularity>
+        <field>ADA_Action_Log__c$CreatedDate</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <name>Deflection and unknown rate by week</name>
+    <params>
+        <name>co</name>
+        <value>1</value>
+    </params>
+    <reportType>ADA_Action_Logs__c</reportType>
+    <scope>organization</scope>
+    <showDetails>false</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
+    <timeFrameFilter>
+        <dateColumn>ADA_Action_Log__c$CreatedDate</dateColumn>
+        <interval>INTERVAL_LAST90</interval>
+    </timeFrameFilter>
+</Report>

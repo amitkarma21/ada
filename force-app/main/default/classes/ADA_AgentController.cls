@@ -313,6 +313,7 @@ public with sharing class ADA_AgentController {
     entry.step = step;
     entry.errorType = diagnosis.errorType.name();
     entry.componentApiName = diagnosis.componentApiName;
+    entry.objectApiName = diagnosis.objectApiName;
     entry.confidence = diagnosis.confidence;
     return entry;
   }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Asked_Count__c</fullName>
+    <description
+  >1 when the row is a Diagnose step, so a report can sum the questions asked.</description>
+    <externalId>false</externalId>
+    <formula>IF(ISPICKVAL(Step__c, &quot;Diagnose&quot;), 1, 0)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Asked Count</label>
+    <precision>18</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+</CustomField>

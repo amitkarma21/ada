@@ -22,7 +22,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 2.2 | Confirm-then-create flow | | e2e | DONE | e2e PASS `.verify/20261104-210830-e2e` (317 Apex tests, 97.1%, golden 11/11, Jest 45). Bug report goes by email (D-16); not yet sent to a real inbox (needs the human's address, see note). |
 | 2.5.1 | Flow fault matching | | e2e | DONE | e2e PASS `.verify/20261105-212332-e2e` (334 Apex tests, 97.2%, golden 14/14, Jest 45). |
 | 2.5.2 | Flow explainer | security | e2e | DONE | e2e PASS `.verify/20261106-211656-e2e` (354 Apex tests, 97.0%, golden 14/14). |
-| 2.5.3 | Error dashboard | | e2e | TODO | |
+| 2.5.3 | Error dashboard | | e2e | DONE | e2e PASS `.verify/20261106-214308-e2e` (355 Apex tests, golden 14/14). |
 | 3.1 | Access checker and allowlist | security | unit | TODO | |
 | 3.2 | Approval process | HUMAN | unit + manual | TODO | |
 | 3.3 | Request flow end to end | | e2e (+ live) | TODO | |
@@ -33,6 +33,15 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 ## Step notes
 
 <!-- For each step: plan bullets, attempts, deviations, reviewer verdicts. Newest first. -->
+
+### 2.5.3 Error dashboard
+- Plan: tests first (log carries the object; analytics permission set sees all rows but no payloads), then fields, reports, dashboard.
+- Built: `ADA_Action_Log__c` gets `Object_Api_Name__c` (set by `ADA_AgentController.entryFor`) and three formula counts (`Asked_Count__c`, `Solved_Count__c`, `Unknown_Count__c`). Report type `ADA_Action_Logs` lists only metadata columns (no payload, result, link or key columns). Four reports in folder `ADA Reports`: top errors by component, errors by object, errors by week, and deflection/unknown rate by week (solved over asked, unknown over asked). Dashboard `ADA Errors and Deflection` in folder `ADA Dashboards`.
+- Access: new permission set `ADA_Analytics` (read all log rows, metadata fields only, Run Reports). `ADA_User` and `ADA_Admin` get the new object field.
+- Invariant: new static check 8 fails the gate if a report, report type or dashboard names a payload, result, link, session or key column.
+- Gotchas: reports on a custom report type use `ADA_Action_Logs__c`, `Object$Field` columns and `Object.Field:SUM` in summary formulas; the dashboard needs `autoselectColumnsFromReport=false`, `axisBinding`, and indicator colours on metrics.
+- Gate note: ran e2e with the live LLM setting in the org first (ADA_SettingTest); redeployed the default and passed. Review: reviewer subagents unavailable; self-review (only counts and API names are reported).
+- Slice 1 complete. Stopping for human review. Demo: paste a flow fault, see the flow named and explained; open the ADA Errors and Deflection dashboard.
 
 ### 2.5.2 Flow explainer
 - Plan: tests first (`ADA_FlowOutlineTest`, 17 tests), then the outline reader, indexer, payload, template and prompt.

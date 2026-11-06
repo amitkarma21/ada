@@ -5,7 +5,9 @@ private class ADA_PermissionsTest {
     Id profileId = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1]
     .Id;
     List<User> users = new List<User>();
-    for (String alias : new List<String>{ 'adau1', 'adau2', 'adaadm' }) {
+    for (
+      String alias : new List<String>{ 'adau1', 'adau2', 'adaadm', 'adaana' }
+    ) {
       users.add(
         new User(
           Alias = alias,
@@ -25,13 +27,15 @@ private class ADA_PermissionsTest {
     for (PermissionSet ps : [
       SELECT Id, Name
       FROM PermissionSet
-      WHERE Name IN ('ADA_User', 'ADA_Admin')
+      WHERE Name IN ('ADA_User', 'ADA_Admin', 'ADA_Analytics')
     ]) {
       permSets.put(ps.Name, ps.Id);
     }
     List<PermissionSetAssignment> assignments = new List<PermissionSetAssignment>();
     for (User u : users) {
-      String name = u.Alias == 'adaadm' ? 'ADA_Admin' : 'ADA_User';
+      String name = u.Alias == 'adaadm'
+        ? 'ADA_Admin'
+        : u.Alias == 'adaana' ? 'ADA_Analytics' : 'ADA_User';
       assignments.add(
         new PermissionSetAssignment(
           AssigneeId = u.Id,
@@ -106,6 +110,40 @@ private class ADA_PermissionsTest {
         [SELECT COUNT() FROM ADA_Access_Request__c WITH USER_MODE]
       );
     }
+  }
+
+  @IsTest
+  static void analyticsSeesEveryonesLogsButNoPayloadsOrResults() {
+    System.runAs(userByAlias('adau1')) {
+      writeLog('k-ana-1');
+    }
+    System.runAs(userByAlias('adau2')) {
+      writeLog('k-ana-2');
+    }
+    System.runAs(userByAlias('adaana')) {
+      Assert.areEqual(
+        2,
+        [SELECT COUNT() FROM ADA_Action_Log__c WITH USER_MODE]
+      );
+      Map<String, Schema.SObjectField> fields = Schema.SObjectType.ADA_Action_Log__c.fields.getMap();
+      Assert.isTrue(fields.get('Error_Type__c').getDescribe().isAccessible());
+      Assert.isTrue(
+        fields.get('Object_Api_Name__c').getDescribe().isAccessible()
+      );
+      Assert.isFalse(
+        fields.get('Payload_Sent__c').getDescribe().isAccessible()
+      );
+      Assert.isFalse(fields.get('Result__c').getDescribe().isAccessible());
+      Assert.isFalse(Schema.SObjectType.ADA_Action_Log__c.isCreateable());
+      Assert.isFalse(Schema.SObjectType.ADA_Action_Log__c.isDeletable());
+      Assert.isFalse(Schema.SObjectType.ADA_Metadata_Index__c.isAccessible());
+    }
+    PermissionSet analytics = [
+      SELECT PermissionsRunReports
+      FROM PermissionSet
+      WHERE Name = 'ADA_Analytics'
+    ];
+    Assert.isTrue(analytics.PermissionsRunReports);
   }
 
   @IsTest
