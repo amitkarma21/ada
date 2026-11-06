@@ -10,6 +10,7 @@ private class ADA_PayloadBuilderTest {
     'componentDescription',
     'conditionFormulaMasked',
     'ruleMessage',
+    'flowRunsWhen',
     'fieldLabels',
     'missingPermissionLabels',
     'userQuestion',
@@ -31,6 +32,7 @@ private class ADA_PayloadBuilderTest {
     extras.objectLabel = 'Opportunity';
     extras.conditionFormulaMasked = 'AND(NOT(IsClosed), CloseDate < TODAY())';
     extras.ruleMessage = 'Close date cannot be in the past for an open opportunity.';
+    extras.flowRunsWhen = 'before a record is saved';
     extras.fieldLabelsByApiName = new Map<String, String>{
       'CloseDate' => 'Close Date'
     };

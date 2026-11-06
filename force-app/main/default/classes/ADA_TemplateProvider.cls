@@ -56,18 +56,7 @@ public with sharing class ADA_TemplateProvider implements ADA_ILlmProvider {
       );
     }
     if (type == ADA_ErrorType.FLOW) {
-      return result(
-        'An automation (flow)' +
-          name +
-          ' stopped the save and showed you its own message.' +
-          quoted(extras) +
-          detail,
-        new List<String>{
-          'Read the message from the flow: it says what is missing.',
-          'Correct the record and save again.',
-          'If the message does not make sense, ask your admin to check the flow.'
-        }
-      );
+      return flow(diagnosis, extras);
     }
     if (type == ADA_ErrorType.APEX) {
       return result(
@@ -144,6 +133,60 @@ public with sharing class ADA_TemplateProvider implements ADA_ILlmProvider {
       'If the rule looks wrong for your case, ask your admin to review it.'
     );
     return result(summary.abbreviate(MAX_SUMMARY), steps);
+  }
+
+  private static ADA_Explanation flow(
+    ADA_Diagnosis diagnosis,
+    ADA_PayloadBuilder.Extras extras
+  ) {
+    Boolean fault = diagnosis.runtimeFault == true;
+    String summary = 'An automation (flow)' + named(diagnosis);
+    if (fault) {
+      summary += ' hit an error while it was running, so the save did not go through.';
+    } else {
+      summary +=
+        ' stopped the save and showed you its own message.' + quoted(extras);
+    }
+    if (extras != null && String.isNotBlank(extras.flowRunsWhen)) {
+      summary += ' This flow runs ' + extras.flowRunsWhen + '.';
+    }
+    ADA_FormulaReader.Reading entry = extras == null
+      ? null
+      : ADA_FormulaReader.read(
+          extras.conditionFormulaMasked,
+          extras.fieldLabelsByApiName
+        );
+    if (entry != null) {
+      summary += ' ' + entryRule(entry);
+    }
+    summary += detail(diagnosis);
+    List<String> steps = fault
+      ? new List<String>{
+          'Note what you were doing and which record you were saving.',
+          'Try again in a moment, in case it was a one-off problem.',
+          'If it fails again, send a report to your admin team so they can check the flow.'
+        }
+      : new List<String>{
+          'Read the message from the flow: it says what is missing.',
+          'Correct the record and save again.',
+          'If the message does not make sense, ask your admin to check the flow.'
+        };
+    return result(summary.abbreviate(MAX_SUMMARY), steps);
+  }
+
+  private static String entryRule(ADA_FormulaReader.Reading reading) {
+    String conditions = String.join(reading.conditions, '; ');
+    if (reading.mode == ADA_FormulaReader.MODE_ALL) {
+      return 'It only acts on a record when all of these are true: ' +
+        conditions +
+        '.';
+    }
+    if (reading.mode == ADA_FormulaReader.MODE_ANY) {
+      return 'It only acts on a record when any one of these is true: ' +
+        conditions +
+        '.';
+    }
+    return 'It only acts on a record when ' + conditions + '.';
   }
 
   private static String describe(ADA_FormulaReader.Reading reading) {

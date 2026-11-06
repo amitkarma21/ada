@@ -21,7 +21,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 2.1 | Azure DevOps target | security | unit | DONE | unit PASS `.verify/20261104-203113-unit` (294 tests, 97.1%). No real Azure DevOps call yet; that needs the human's org, project and token (see note). |
 | 2.2 | Confirm-then-create flow | | e2e | DONE | e2e PASS `.verify/20261104-210830-e2e` (317 Apex tests, 97.1%, golden 11/11, Jest 45). Bug report goes by email (D-16); not yet sent to a real inbox (needs the human's address, see note). |
 | 2.5.1 | Flow fault matching | | e2e | DONE | e2e PASS `.verify/20261105-212332-e2e` (334 Apex tests, 97.2%, golden 14/14, Jest 45). |
-| 2.5.2 | Flow explainer | security | e2e | TODO | |
+| 2.5.2 | Flow explainer | security | e2e | DONE | e2e PASS `.verify/20261106-211656-e2e` (354 Apex tests, 97.0%, golden 14/14). |
 | 2.5.3 | Error dashboard | | e2e | TODO | |
 | 3.1 | Access checker and allowlist | security | unit | TODO | |
 | 3.2 | Approval process | HUMAN | unit + manual | TODO | |
@@ -33,6 +33,16 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 ## Step notes
 
 <!-- For each step: plan bullets, attempts, deviations, reviewer verdicts. Newest first. -->
+
+### 2.5.2 Flow explainer
+- Plan: tests first (`ADA_FlowOutlineTest`, 17 tests), then the outline reader, indexer, payload, template and prompt.
+- Built: `ADA_FlowOutline` reads a flow's start element (trigger type, create/update/delete, filters, filter logic) into plain words (`Flow_Runs_When__c`) and a masked entry condition (`Formula_Masked__c`, written with `&&`/`||` so `ADA_FormulaReader` can describe it). Literals go through `ADA_FormulaMasker`; no filter value is stored.
+- Re-index: a Flow row with a blank `Flow_Runs_When__c` is queued again, so flows indexed before this step are filled in on the next run.
+- LLM contract: new field `flowRunsWhen` (pattern-scrubbed, clipped); `ARCHITECTURE` section 4, `ALLOWED`/`CONTRACT` sets and the canary extras updated together. The cache `VERSION` is now 3.
+- Run-time faults: `ADA_Diagnosis.runtimeFault` (kept in the session snapshot). For a fault the flow's own custom messages are not quoted, since they do not apply; the template says the flow hit an error and suggests a report to the admin team.
+- Template: `ADA_TemplateProvider.flow` states when the flow runs and what it needs to start.
+- Prompt: new "How to read a flow" paragraph.
+- Gate note: the first e2e run failed on three tests (schema allow-list, a query missing the new field, a DML-then-callout in a new test); fixed. Review: reviewer subagents unavailable (404); manual self-review (the new field holds metadata only).
 
 ### 2.5.1 Flow fault matching
 - Plan: tests first (`ADA_FlowErrorMatcherTest`, 16 tests), then the matcher, then three golden cases.

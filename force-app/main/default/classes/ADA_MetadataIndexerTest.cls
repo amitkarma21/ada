@@ -28,6 +28,7 @@ private class ADA_MetadataIndexerTest {
         Message_Normalised__c,
         Formula_Masked__c,
         Field_Api_Names__c,
+        Flow_Runs_When__c,
         Source_Last_Modified__c
       FROM ADA_Metadata_Index__c
       WHERE Component_Type__c = :type AND Api_Name__c = :apiName
@@ -228,6 +229,28 @@ private class ADA_MetadataIndexerTest {
   }
 
   @IsTest
+  static void aFlowRowStoredBeforeTheOutlineExistedIsQueuedAgain() {
+    ADA_IndexTestSupport.Router router = ADA_IndexTestSupport.install();
+    router.flows.add(
+      ADA_IndexTestSupport.flow(
+        '301000000000001',
+        'Flow_Same',
+        'Case',
+        ADA_IndexTestSupport.FLOW_SAME_DATE
+      )
+    );
+    ADA_Metadata_Index__c row = rowOf('Flow', 'Flow_Same');
+    row.Flow_Runs_When__c = null;
+    update row;
+    System.runAs(admin()) {
+      List<ADA_MetadataIndexer.WorkItem> pending = new ADA_MetadataIndexer()
+        .discover();
+      Assert.areEqual(1, pending.size());
+      Assert.areEqual('Flow_Same', pending[0].apiName);
+    }
+  }
+
+  @IsTest
   static void runChunkMasksTheFormulaAndNeverStoresLiterals() {
     ADA_IndexTestSupport.Router router = ADA_IndexTestSupport.install();
     String ruleId = ADA_IndexTestSupport.fakeId(7);
@@ -243,6 +266,25 @@ private class ADA_MetadataIndexerTest {
       '301000000000009',
       new Map<String, Object>{
         'description' => 'Escalation guard',
+        'start' => new Map<String, Object>{
+          'triggerType' => 'RecordBeforeSave',
+          'recordTriggerType' => 'Update',
+          'filterLogic' => 'and',
+          'filters' => new List<Object>{
+            new Map<String, Object>{
+              'field' => 'IsEscalated',
+              'operator' => 'EqualTo',
+              'value' => new Map<String, Object>{ 'booleanValue' => true }
+            },
+            new Map<String, Object>{
+              'field' => 'Subject',
+              'operator' => 'EqualTo',
+              'value' => new Map<String, Object>{
+                'stringValue' => 'Jo Citizen refund'
+              }
+            }
+          }
+        },
         'customErrors' => new List<Object>{
           new Map<String, Object>{
             'customErrorMessages' => new List<Object>{
@@ -287,6 +329,14 @@ private class ADA_MetadataIndexerTest {
       );
       Assert.areEqual('Priority', flowRow.Field_Api_Names__c);
       Assert.areEqual('Escalation guard', flowRow.Description__c);
+      Assert.areEqual(
+        'before a record is saved (when it is updated)',
+        flowRow.Flow_Runs_When__c
+      );
+      Assert.areEqual(
+        'IsEscalated = TRUE && Subject = \'TEXT_1\'',
+        flowRow.Formula_Masked__c
+      );
       for (ADA_Metadata_Index__c row : [
         SELECT Formula_Masked__c, Message_Template__c, Description__c
         FROM ADA_Metadata_Index__c

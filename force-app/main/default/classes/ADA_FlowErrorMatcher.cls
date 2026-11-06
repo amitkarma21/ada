@@ -45,6 +45,7 @@ public with sharing class ADA_FlowErrorMatcher extends ADA_TemplateMatcher {
     );
     diagnosis.objectApiName = context.objectApiName;
     diagnosis.componentType = ADA_MetadataIndexer.FLOW;
+    diagnosis.runtimeFault = true;
     ADA_Metadata_Index__c named = namedFlow(context);
     List<String> notes = new List<String>();
     if (named != null) {

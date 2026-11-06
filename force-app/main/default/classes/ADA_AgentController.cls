@@ -349,7 +349,10 @@ public with sharing class ADA_AgentController {
     ADA_Metadata_Index__c row = indexRow(diagnosis);
     if (row != null) {
       extras.conditionFormulaMasked = row.Formula_Masked__c;
-      extras.ruleMessage = row.Message_Template__c;
+      extras.ruleMessage = diagnosis.runtimeFault == true
+        ? null
+        : row.Message_Template__c;
+      extras.flowRunsWhen = row.Flow_Runs_When__c;
     }
     for (String fieldName : diagnosis.fieldApiNames) {
       String label = fieldLabel(diagnosis.objectApiName, fieldName);

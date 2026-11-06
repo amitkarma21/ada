@@ -73,6 +73,7 @@ public class ADA_LlmTestSupport {
     extras.objectLabel = 'Opportunity';
     extras.conditionFormulaMasked = 'AND(NOT(IsClosed), CloseDate < TODAY())';
     extras.ruleMessage = 'Close date cannot be in the past for an open opportunity.';
+    extras.flowRunsWhen = 'before a record is saved';
     extras.fieldLabels = new List<String>{ 'Close Date' };
     extras.fieldLabelsByApiName = new Map<String, String>{
       'CloseDate' => 'Close Date',

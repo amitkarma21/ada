@@ -14,6 +14,7 @@ public with sharing class ADA_ObjectIndexStore implements ADA_IMetadataIndexStor
         Message_Template__c,
         Message_Normalised__c,
         Formula_Masked__c,
+        Flow_Runs_When__c,
         Field_Api_Names__c,
         Active__c,
         Source_Last_Modified__c,

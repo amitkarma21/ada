@@ -194,6 +194,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>ADA_Metadata_Index__c.Flow_Runs_When__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>ADA_Metadata_Index__c.Active__c</field>
         <readable>true</readable>
     </fieldPermissions>

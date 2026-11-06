@@ -265,6 +265,9 @@ public with sharing class ADA_MetadataIndexer {
       LONG_TEXT
     );
     row.Field_Api_Names__c = clip(String.join(fields, ','), MEDIUM_TEXT);
+    ADA_FlowOutline.Outline outline = ADA_FlowOutline.read(metadata);
+    row.Flow_Runs_When__c = clip(outline.runsWhen, 255);
+    row.Formula_Masked__c = clip(outline.conditionMasked, LONG_TEXT);
     return row;
   }
 
@@ -505,7 +508,8 @@ public with sharing class ADA_MetadataIndexer {
         Active__c,
         Source_Last_Modified__c,
         Field_Api_Names__c,
-        Message_Template__c
+        Message_Template__c,
+        Flow_Runs_When__c
       FROM ADA_Metadata_Index__c
       WITH USER_MODE
       LIMIT 50000
@@ -527,7 +531,8 @@ public with sharing class ADA_MetadataIndexer {
     );
     return row == null ||
       row.Source_Last_Modified__c != item.modified ||
-      row.Active__c != item.active;
+      row.Active__c != item.active ||
+      (item.kind == FLOW && String.isBlank(row.Flow_Runs_When__c));
   }
 
   private static void keepIfChanged(

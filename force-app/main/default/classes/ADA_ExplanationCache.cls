@@ -1,6 +1,6 @@
 public with sharing class ADA_ExplanationCache {
   @TestVisible
-  private static final Integer VERSION = 2;
+  private static final Integer VERSION = 3;
 
   public ADA_Explanation find(ADA_Diagnosis diagnosis, String locale) {
     ADA_Metadata_Index__c row = row(diagnosis);

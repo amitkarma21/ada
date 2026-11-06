@@ -134,6 +134,47 @@ private class ADA_TemplateProviderTest {
   }
 
   @IsTest
+  static void aFlowFaultSaysTheFlowFailedAndNeverQuotesAMessage() {
+    ADA_Diagnosis fault = new ADA_Diagnosis(ADA_ErrorType.FLOW, 0.9);
+    fault.componentApiName = 'Case_Router';
+    fault.componentLabel = 'Case Router';
+    fault.runtimeFault = true;
+    fault.description = 'The flow stopped at the step "Update_Case" (updating records).';
+    ADA_Explanation answer = new ADA_TemplateProvider()
+      .explain(fault, richExtras());
+    Assert.isTrue(answer.summary.contains('hit an error'), answer.summary);
+    Assert.isTrue(answer.summary.contains('Case Router'));
+    Assert.isTrue(answer.summary.contains('Update_Case'));
+    Assert.isFalse(answer.summary.contains('Close date cannot be in the past'));
+    Assert.isTrue(String.join(answer.fixSteps, ' ').contains('admin'));
+  }
+
+  @IsTest
+  static void aFlowSaysWhenItRunsAndWhatItNeedsToStart() {
+    ADA_PayloadBuilder.Extras extras = new ADA_PayloadBuilder.Extras();
+    extras.flowRunsWhen = 'before a record is saved (when it is updated)';
+    extras.conditionFormulaMasked = 'IsEscalated = TRUE && Priority != \'TEXT_1\'';
+    extras.fieldLabelsByApiName = new Map<String, String>{
+      'IsEscalated' => 'Escalated'
+    };
+    ADA_Diagnosis fault = new ADA_Diagnosis(ADA_ErrorType.FLOW, 0.9);
+    fault.componentLabel = 'Case Router';
+    fault.runtimeFault = true;
+    ADA_Explanation answer = new ADA_TemplateProvider().explain(fault, extras);
+    Assert.isTrue(
+      answer.summary.contains(
+        'This flow runs before a record is saved (when it is updated).'
+      ),
+      answer.summary
+    );
+    Assert.isTrue(
+      answer.summary.contains('all of these are true: Escalated is ticked'),
+      answer.summary
+    );
+    Assert.isFalse(answer.summary.contains('TEXT_1'));
+  }
+
+  @IsTest
   static void aHugeMessageStillFitsTheLimits() {
     ADA_PayloadBuilder.Extras extras = richExtras();
     extras.ruleMessage = 'word '.repeat(2000);

@@ -11,6 +11,7 @@ public with sharing class ADA_PayloadBuilder {
     public String objectLabel;
     public String conditionFormulaMasked;
     public String ruleMessage;
+    public String flowRunsWhen;
     public List<String> fieldLabels = new List<String>();
     public Map<String, String> fieldLabelsByApiName = new Map<String, String>();
     public List<String> missingPermissionLabels = new List<String>();
@@ -30,6 +31,7 @@ public with sharing class ADA_PayloadBuilder {
     public String componentDescription;
     public String conditionFormulaMasked;
     public String ruleMessage;
+    public String flowRunsWhen;
     public List<String> fieldLabels;
     public List<String> missingPermissionLabels;
     public String userQuestion;
@@ -68,6 +70,7 @@ public with sharing class ADA_PayloadBuilder {
       ADA_PiiGate.scrub(input.ruleMessage).text,
       MAX_MESSAGE
     );
+    body.flowRunsWhen = clip(patternsOnly(input.flowRunsWhen), MAX_LABEL * 2);
     body.fieldLabels = labels(input.fieldLabels);
     body.missingPermissionLabels = labels(input.missingPermissionLabels);
     body.userQuestion = clip(

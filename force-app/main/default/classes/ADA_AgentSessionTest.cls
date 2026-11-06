@@ -50,6 +50,7 @@ private class ADA_AgentSessionTest {
     ADA_Diagnosis original = ADA_LlmTestSupport.diagnosis();
     original.fieldApiNames = new List<String>{ 'CloseDate', 'StageName' };
     original.suggestedAction = ADA_SuggestedAction.REQUEST_ACCESS;
+    original.runtimeFault = true;
     System.runAs(userByAlias('adases1')) {
       String key = start(original);
       ADA_AgentSession session = ADA_AgentSession.load(key);
@@ -64,6 +65,7 @@ private class ADA_AgentSessionTest {
       Assert.areEqual(original.description, copy.description);
       Assert.areEqual(original.fieldApiNames, copy.fieldApiNames);
       Assert.areEqual(original.suggestedAction, copy.suggestedAction);
+      Assert.isTrue(copy.runtimeFault);
     }
   }
 

@@ -20,6 +20,7 @@ public with sharing class ADA_AgentSession {
     public String description;
     public List<String> fieldApiNames;
     public String suggestedAction;
+    public Boolean runtimeFault;
   }
 
   public final String key;
@@ -59,6 +60,7 @@ public with sharing class ADA_AgentSession {
       state.fieldApiNames.add(clip(name, MAX_FIELD_NAME));
     }
     state.suggestedAction = diagnosis.suggestedAction.name();
+    state.runtimeFault = diagnosis.runtimeFault == true;
     return JSON.serialize(state, true);
   }
 
@@ -102,6 +104,7 @@ public with sharing class ADA_AgentSession {
       diagnosis.suggestedAction = ADA_SuggestedAction.valueOf(
         state.suggestedAction
       );
+      diagnosis.runtimeFault = state.runtimeFault == true;
       return diagnosis;
     } catch (Exception damaged) {
       throw notFound();

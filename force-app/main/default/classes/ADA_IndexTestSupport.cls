@@ -207,6 +207,7 @@ public class ADA_IndexTestSupport {
       Object_Api_Name__c = objectName,
       Api_Name__c = apiName,
       Active__c = true,
+      Flow_Runs_When__c = type == 'Flow' ? 'before a record is saved' : null,
       Source_Last_Modified__c = Datetime.newInstanceGmt(
         2026,
         month,

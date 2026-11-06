@@ -8,11 +8,13 @@ public with sharing class ADA_Diagnosis {
   public String description { get; set; }
   public List<String> fieldApiNames { get; set; }
   public ADA_SuggestedAction suggestedAction { get; set; }
+  public Boolean runtimeFault { get; set; }
 
   public ADA_Diagnosis(ADA_ErrorType errorType, Decimal confidence) {
     this.errorType = errorType == null ? ADA_ErrorType.UNKNOWN : errorType;
     this.confidence = clamp(confidence);
     this.fieldApiNames = new List<String>();
+    this.runtimeFault = false;
     this.suggestedAction = ADA_SuggestedAction.EXPLAIN_ONLY;
   }
 

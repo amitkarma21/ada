@@ -10,6 +10,7 @@ private class ADA_PromptBuilderTest {
     'componentDescription',
     'conditionFormulaMasked',
     'ruleMessage',
+    'flowRunsWhen',
     'fieldLabels',
     'missingPermissionLabels',
     'userQuestion',
