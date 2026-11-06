@@ -22,7 +22,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 2.2 | Confirm-then-create flow | | e2e | DONE | e2e PASS `.verify/20261104-210830-e2e` (317 Apex tests, 97.1%, golden 11/11, Jest 45). Bug report goes by email (D-16); not yet sent to a real inbox (needs the human's address, see note). |
 | 2.5.1 | Flow fault matching | | e2e | DONE | e2e PASS `.verify/20261105-212332-e2e` (334 Apex tests, 97.2%, golden 14/14, Jest 45). |
 | 2.5.2 | Flow explainer | security | e2e | DONE | e2e PASS `.verify/20261106-211656-e2e` (354 Apex tests, 97.0%, golden 14/14). |
-| 2.5.3 | Error dashboard | | e2e | DONE | e2e PASS `.verify/20261106-214308-e2e` (355 Apex tests, golden 14/14). |
+| 2.5.3 | Error dashboard | | e2e | DONE | e2e PASS `.verify/20261106-214308-e2e` (354 Apex tests, 97.0%, golden 14/14). |
 | 3.1 | Access checker and allowlist | security | unit | TODO | |
 | 3.2 | Approval process | HUMAN | unit + manual | TODO | |
 | 3.3 | Request flow end to end | | e2e (+ live) | TODO | |
