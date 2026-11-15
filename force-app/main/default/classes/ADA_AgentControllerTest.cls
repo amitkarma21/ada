@@ -133,6 +133,7 @@ private class ADA_AgentControllerTest {
       Assert.isFalse(explanation.usedFallback);
       Assert.isFalse(explanation.fixSteps.isEmpty());
       Assert.areEqual(1, mock.calls);
+      assertRuleSource(explanation);
 
       ADA_AgentController.ProposalView proposal = ADA_AgentController.proposeAction(
         key,
@@ -194,6 +195,17 @@ private class ADA_AgentControllerTest {
     Assert.areEqual(1, [SELECT COUNT() FROM ADA_Action_Log__c]);
   }
 
+  private static void assertRuleSource(
+    ADA_AgentController.ExplanationView explanation
+  ) {
+    Assert.areEqual(1, explanation.sources.size());
+    String line = explanation.sources[0];
+    Assert.isTrue(line.contains('Validation rule'), line);
+    Assert.isTrue(line.contains('Close_Date_Rule'), line);
+    Assert.isTrue(line.contains('Opportunity'), line);
+    Assert.isTrue(line.contains('2026-03-01'), line);
+  }
+
   private static void assertSessionRejected(String key) {
     try {
       ADA_AgentController.explain(key, null);
@@ -252,6 +264,7 @@ private class ADA_AgentControllerTest {
       );
       Assert.isTrue(explanation.fixSteps.isEmpty());
       Assert.areEqual('None', explanation.source);
+      Assert.isTrue(explanation.sources.isEmpty());
       Assert.areEqual(
         new List<String>{ 'RAISE_BUG' },
         explanation.allowedActions
@@ -347,6 +360,7 @@ private class ADA_AgentControllerTest {
       );
       Assert.areEqual('Template', explanation.source);
       Assert.isFalse(explanation.usedFallback);
+      assertRuleSource(explanation);
     }
     Assert.areEqual(0, mock.calls);
     ADA_Action_Log__c explain = logs('Explain')[0];

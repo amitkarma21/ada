@@ -59,6 +59,25 @@ export default class AdaDiagnosisCard extends LightningElement {
     }));
   }
 
+  get hasSources() {
+    return (
+      this.isConfident &&
+      !!this.explanation &&
+      Array.isArray(this.explanation.sources) &&
+      this.explanation.sources.length > 0
+    );
+  }
+
+  get citations() {
+    if (!this.hasSources) {
+      return [];
+    }
+    return this.explanation.sources.map((text, index) => ({
+      key: `source-${index}`,
+      text
+    }));
+  }
+
   get showSource() {
     return (
       this.isConfident &&

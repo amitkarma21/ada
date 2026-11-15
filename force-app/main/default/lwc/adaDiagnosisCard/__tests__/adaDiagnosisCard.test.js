@@ -148,6 +148,32 @@ describe("c-ada-diagnosis-card", () => {
     expect(q(element, "payload")).toBeNull();
   });
 
+  it("lists what the answer is based on", () => {
+    const element = build({
+      diagnosis: DIAGNOSIS,
+      explanation: {
+        ...EXPLANATION,
+        sources: [
+          "Validation rule: Close Date Future (Close_Date_Future) on Opportunity, last changed 2026-03-01"
+        ]
+      }
+    });
+    const items = element.shadowRoot.querySelectorAll('[data-id="citation"]');
+    expect(items.length).toBe(1);
+    expect(items[0].textContent).toContain("Close_Date_Future");
+    expect(q(element, "sources").textContent).toContain("Based on");
+  });
+
+  it("shows no sources block when there are none", () => {
+    const element = build({
+      diagnosis: DIAGNOSIS,
+      explanation: { ...EXPLANATION, sources: [] }
+    });
+    expect(q(element, "sources")).toBeNull();
+    const old = build({ diagnosis: DIAGNOSIS, explanation: EXPLANATION });
+    expect(q(old, "sources")).toBeNull();
+  });
+
   it("renders markup from the server as plain text", () => {
     const hostile = '<img src=x onerror="window.pwned=1">';
     const element = build({
@@ -155,6 +181,7 @@ describe("c-ada-diagnosis-card", () => {
       explanation: {
         summary: hostile,
         fixSteps: [hostile, "<script>window.pwned=2</script>"],
+        sources: [hostile],
         source: "LLM"
       }
     });

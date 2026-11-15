@@ -24,7 +24,7 @@ Claude Code updates this file at every step (see `CLAUDE.md`, the build loop).
 | 2.5.2 | Flow explainer | security | e2e | DONE | e2e PASS `.verify/20261106-211656-e2e` (354 Apex tests, 97.0%, golden 14/14). |
 | 2.5.3 | Error dashboard | | e2e | DONE | e2e PASS `.verify/20261106-214308-e2e` (354 Apex tests, 97.0%, golden 14/14). |
 | 2.6.1 | Unknown-error queue | security | e2e | DONE | e2e `.verify/20261115-134233-e2e` PASS (366 Apex tests, 97.0%, golden 14/14). Anonymous `Error_Sample__c` on not-confident rows only, owner and admin read, none for analytics; admin list view and report; static check 9; D-17 |
-| 2.6.2 | Cited answers | | e2e | TODO | |
+| 2.6.2 | Cited answers | | e2e | DONE | e2e PASS `.verify/20261115-135106-e2e` (366 Apex tests, 97.0%, golden 14/14, Jest 47). `ExplanationView.sources` (rule or flow, object, last changed) on both paths, shown as "Based on" in the card. |
 | 2.6.3 | Follow-up questions | security | e2e | TODO | |
 | 3.1 | Access checker and allowlist | security | unit | TODO | |
 | 3.2 | Approval process | HUMAN | unit + manual | TODO | |

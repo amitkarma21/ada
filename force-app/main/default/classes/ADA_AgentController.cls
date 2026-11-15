@@ -19,6 +19,14 @@ public with sharing class ADA_AgentController {
     ADA_ErrorType.APEX => 'custom code'
   };
 
+  private static final Map<String, String> COMPONENT_KIND = new Map<String, String>{
+    ADA_MetadataIndexer.VALIDATION_RULE => 'Validation rule',
+    ADA_MetadataIndexer.FLOW => 'Flow',
+    ADA_MetadataIndexer.APEX_TRIGGER => 'Apex trigger',
+    ADA_MetadataIndexer.DUPLICATE_RULE => 'Duplicate rule',
+    ADA_MetadataIndexer.REQUIRED_FIELD => 'Required field'
+  };
+
   public class DiagnosisView {
     @AuraEnabled
     public String sessionKey;
@@ -55,6 +63,8 @@ public with sharing class ADA_AgentController {
     public Boolean cached = false;
     @AuraEnabled
     public Boolean usedFallback = false;
+    @AuraEnabled
+    public List<String> sources = new List<String>();
     @AuraEnabled
     public List<String> allowedActions;
   }
@@ -151,6 +161,7 @@ public with sharing class ADA_AgentController {
     view.source = outcome.explanation.source;
     view.cached = outcome.cached;
     view.usedFallback = outcome.fallbackReason != null;
+    view.sources = sourcesFor(diagnosis);
     entry.targetSystem = outcome.payloadSent != null ||
       !outcome.blockedKinds.isEmpty()
       ? 'LLM'
@@ -374,6 +385,29 @@ public with sharing class ADA_AgentController {
       }
     }
     return extras;
+  }
+
+  private static List<String> sourcesFor(ADA_Diagnosis diagnosis) {
+    List<String> sources = new List<String>();
+    if (String.isBlank(diagnosis.componentApiName)) {
+      return sources;
+    }
+    String kind = COMPONENT_KIND.get(diagnosis.componentType);
+    String line = (kind == null ? 'Component' : kind) + ': ';
+    String label = diagnosis.componentLabel;
+    line += String.isBlank(label) || label == diagnosis.componentApiName
+      ? diagnosis.componentApiName
+      : label + ' (' + diagnosis.componentApiName + ')';
+    if (String.isNotBlank(diagnosis.objectApiName)) {
+      line += ' on ' + diagnosis.objectApiName;
+    }
+    ADA_Metadata_Index__c row = indexRow(diagnosis);
+    if (row != null && row.Source_Last_Modified__c != null) {
+      line +=
+        ', last changed ' + row.Source_Last_Modified__c.formatGmt('yyyy-MM-dd');
+    }
+    sources.add(line);
+    return sources;
   }
 
   private static Set<String> formulaWords(String maskedFormula) {

@@ -24,6 +24,16 @@
             </template>
           </ol>
         </template>
+        <template lwc:if={hasSources}>
+          <div class="slds-m-top_small" data-id="sources">
+            <h3 class="slds-text-title">Based on</h3>
+            <ul class="slds-list_dotted">
+              <template for:each={citations} for:item="citation">
+                <li key={citation.key} data-id="citation">{citation.text}</li>
+              </template>
+            </ul>
+          </div>
+        </template>
         <template lwc:if={showSource}>
           <p class="slds-text-color_weak slds-m-top_small" data-id="source">
             {sourceText}
