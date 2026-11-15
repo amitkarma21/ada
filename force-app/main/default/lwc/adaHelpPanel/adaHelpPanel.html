@@ -53,8 +53,11 @@
         explanation={explanation}
         proposal={proposal}
         feedback-given={feedbackGiven}
+        follow-ups={followUps}
+        follow-ups-left={followUpsLeft}
         busy={busy}
         onfeedback={handleFeedback}
+        onfollowup={handleFollowUp}
         onreportrequest={handleReportRequest}
       ></c-ada-diagnosis-card>
       <template lwc:if={proposal}>

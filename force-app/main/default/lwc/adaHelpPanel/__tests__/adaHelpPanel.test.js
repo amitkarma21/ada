@@ -6,7 +6,13 @@ import explain from "@salesforce/apex/ADA_AgentController.explain";
 import proposeAction from "@salesforce/apex/ADA_AgentController.proposeAction";
 import confirmAction from "@salesforce/apex/ADA_AgentController.confirmAction";
 import recordFeedback from "@salesforce/apex/ADA_AgentController.recordFeedback";
+import askFollowUp from "@salesforce/apex/ADA_AgentController.askFollowUp";
 
+jest.mock(
+  "@salesforce/apex/ADA_AgentController.askFollowUp",
+  () => ({ default: jest.fn() }),
+  { virtual: true }
+);
 jest.mock(
   "@salesforce/apex/ADA_AgentController.diagnose",
   () => ({ default: jest.fn() }),
@@ -60,6 +66,7 @@ const EXPLAINED = {
   source: "LLM",
   cached: false,
   usedFallback: false,
+  followUpsLeft: 3,
   allowedActions: ["EXPLAIN", "RAISE_BUG"]
 };
 const NOT_SURE_EXPLANATION = {
@@ -127,6 +134,7 @@ describe("c-ada-help-panel", () => {
     proposeAction.mockReset();
     confirmAction.mockReset();
     recordFeedback.mockReset();
+    askFollowUp.mockReset();
   });
 
   afterEach(() => {
@@ -491,5 +499,79 @@ describe("c-ada-help-panel", () => {
     expect(
       element.shadowRoot.querySelectorAll("[onclick], [tabindex]").length
     ).toBe(0);
+  });
+
+  it("asks a follow-up, adds the answer and counts down", async () => {
+    diagnose.mockResolvedValue(CONFIDENT);
+    explain.mockResolvedValue(EXPLAINED);
+    askFollowUp.mockResolvedValue({
+      sessionKey: KEY,
+      summary: "Enter a date after today.",
+      fixSteps: ["Pick tomorrow."],
+      source: "LLM",
+      followUpsLeft: 2
+    });
+    const element = build();
+    await submit(element);
+    expect(card(element).followUpsLeft).toBe(3);
+    card(element).dispatchEvent(
+      new CustomEvent("followup", { detail: { question: "What do I enter?" } })
+    );
+    await flush();
+    await flush();
+    expect(askFollowUp).toHaveBeenCalledWith({
+      sessionKey: KEY,
+      question: "What do I enter?"
+    });
+    expect(card(element).followUpsLeft).toBe(2);
+    expect(card(element).followUps.length).toBe(1);
+    expect(card(element).followUps[0].question).toBe("What do I enter?");
+    expect(card(element).followUps[0].summary).toBe(
+      "Enter a date after today."
+    );
+    expect(q(element, "error")).toBeNull();
+  });
+
+  it("shows the server message when a follow-up is refused", async () => {
+    diagnose.mockResolvedValue(CONFIDENT);
+    explain.mockResolvedValue(EXPLAINED);
+    askFollowUp.mockRejectedValue({
+      body: { message: "You can ask 3 follow-up questions for each problem." }
+    });
+    const element = build();
+    await submit(element);
+    card(element).dispatchEvent(
+      new CustomEvent("followup", { detail: { question: "More?" } })
+    );
+    await flush();
+    await flush();
+    expect(q(element, "error").textContent).toContain("3 follow-up");
+    expect(card(element).followUps.length).toBe(0);
+    expect(card(element).followUpsLeft).toBe(3);
+  });
+
+  it("clears follow-ups on start over", async () => {
+    diagnose.mockResolvedValue(CONFIDENT);
+    explain.mockResolvedValue(EXPLAINED);
+    askFollowUp.mockResolvedValue({
+      sessionKey: KEY,
+      summary: "A.",
+      fixSteps: [],
+      source: "Template",
+      followUpsLeft: 2
+    });
+    const element = build();
+    await submit(element);
+    card(element).dispatchEvent(
+      new CustomEvent("followup", { detail: { question: "Q?" } })
+    );
+    await flush();
+    await flush();
+    q(element, "start-over").click();
+    await flush();
+    diagnose.mockResolvedValue(CONFIDENT);
+    await submit(element);
+    expect(card(element).followUps.length).toBe(0);
+    expect(card(element).followUpsLeft).toBe(3);
   });
 });

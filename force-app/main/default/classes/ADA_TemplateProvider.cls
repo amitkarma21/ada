@@ -8,6 +8,15 @@ public with sharing class ADA_TemplateProvider implements ADA_ILlmProvider {
     ADA_Diagnosis diagnosis,
     ADA_PayloadBuilder.Extras extras
   ) {
+    if (extras != null && extras.followUp == true) {
+      return result(
+        'I cannot answer follow-up questions without the AI model, and it is not available right now. Your admin can answer this one.',
+        new List<String>{
+          'Send your question to your admin, together with the error message you saw.',
+          'Read the steps above again in case they already cover it.'
+        }
+      );
+    }
     ADA_ErrorType type = diagnosis == null
       ? ADA_ErrorType.UNKNOWN
       : diagnosis.errorType;

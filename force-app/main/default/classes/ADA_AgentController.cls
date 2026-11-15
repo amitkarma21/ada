@@ -2,6 +2,7 @@ public with sharing class ADA_AgentController {
   public static final String NOT_SURE = 'I\'m not sure what\'s blocking you.';
   public static final String ACTION_EXPLAIN = 'EXPLAIN';
   public static final String ACTION_RAISE_BUG = 'RAISE_BUG';
+  public static final Integer MAX_FOLLOW_UPS = 3;
   private static final Integer MAX_ERROR_TEXT = 4000;
   private static final Integer MAX_QUESTION_INPUT = 2000;
   private static final Integer MAX_NOTES_INPUT = 2000;
@@ -65,6 +66,8 @@ public with sharing class ADA_AgentController {
     public Boolean usedFallback = false;
     @AuraEnabled
     public List<String> sources = new List<String>();
+    @AuraEnabled
+    public Integer followUpsLeft = MAX_FOLLOW_UPS;
     @AuraEnabled
     public List<String> allowedActions;
   }
@@ -162,6 +165,67 @@ public with sharing class ADA_AgentController {
     view.cached = outcome.cached;
     view.usedFallback = outcome.fallbackReason != null;
     view.sources = sourcesFor(diagnosis);
+    entry.targetSystem = outcome.payloadSent != null ||
+      !outcome.blockedKinds.isEmpty()
+      ? 'LLM'
+      : 'None';
+    entry.payloadSent = outcome.payloadSent;
+    entry.status = statusFor(outcome);
+    entry.result = resultFor(outcome);
+    ADA_ActionLogger.write(entry);
+    return view;
+  }
+
+  // A short question about the same masked facts. It goes through the same payload builder
+  // as explain, so the question is scrubbed and clipped before it leaves. Capped per session.
+  @AuraEnabled
+  public static ExplanationView askFollowUp(
+    String sessionKey,
+    String question
+  ) {
+    ADA_AgentSession session = load(sessionKey);
+    ADA_Diagnosis diagnosis = session.diagnosis;
+    if (String.isBlank(question)) {
+      throw fail('Type your question first.');
+    }
+    if (!isConfident(diagnosis)) {
+      throw fail(NOT_SURE + ' There is nothing to follow up on yet.');
+    }
+    Integer asked = [
+      SELECT COUNT()
+      FROM ADA_Action_Log__c
+      WHERE
+        Session_Key__c = :session.key
+        AND Step__c = 'FollowUp'
+        AND OwnerId = :UserInfo.getUserId()
+      WITH USER_MODE
+    ];
+    if (asked >= MAX_FOLLOW_UPS) {
+      throw fail(
+        'You can ask ' +
+          MAX_FOLLOW_UPS +
+          ' follow-up questions for each problem. Ask your admin for more help.'
+      );
+    }
+    ADA_PayloadBuilder.Extras extras = extrasFor(
+      diagnosis,
+      question.left(MAX_QUESTION_INPUT)
+    );
+    extras.followUp = true;
+    ADA_ExplanationService.Outcome outcome = ADA_ExplanationService.explain(
+      diagnosis,
+      extras
+    );
+    ExplanationView view = new ExplanationView();
+    view.sessionKey = session.key;
+    view.summary = outcome.explanation.summary;
+    view.fixSteps = outcome.explanation.fixSteps;
+    view.source = outcome.explanation.source;
+    view.usedFallback = outcome.fallbackReason != null;
+    view.sources = sourcesFor(diagnosis);
+    view.followUpsLeft = MAX_FOLLOW_UPS - asked - 1;
+    view.allowedActions = allowedActions(diagnosis);
+    ADA_ActionLogger.Entry entry = entryFor(session.key, diagnosis, 'FollowUp');
     entry.targetSystem = outcome.payloadSent != null ||
       !outcome.blockedKinds.isEmpty()
       ? 'LLM'

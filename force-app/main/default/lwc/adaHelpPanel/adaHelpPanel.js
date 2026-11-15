@@ -5,6 +5,7 @@ import explain from "@salesforce/apex/ADA_AgentController.explain";
 import proposeAction from "@salesforce/apex/ADA_AgentController.proposeAction";
 import confirmAction from "@salesforce/apex/ADA_AgentController.confirmAction";
 import recordFeedback from "@salesforce/apex/ADA_AgentController.recordFeedback";
+import askFollowUp from "@salesforce/apex/ADA_AgentController.askFollowUp";
 
 const GENERIC_ERROR = "Something went wrong. Try again.";
 
@@ -14,6 +15,8 @@ export default class AdaHelpPanel extends LightningElement {
   errorText = "";
   diagnosis = null;
   explanation = null;
+  followUps = [];
+  followUpsLeft = 0;
   proposal = null;
   confirmResult = null;
   feedbackGiven = false;
@@ -70,6 +73,8 @@ export default class AdaHelpPanel extends LightningElement {
     this.errorMessage = null;
     this.diagnosis = null;
     this.explanation = null;
+    this.followUps = [];
+    this.followUpsLeft = 0;
     this.proposal = null;
     this.confirmResult = null;
     this.feedbackGiven = false;
@@ -84,6 +89,10 @@ export default class AdaHelpPanel extends LightningElement {
         sessionKey: this.diagnosis.sessionKey,
         userQuestion: null
       });
+      this.followUpsLeft =
+        typeof this.explanation.followUpsLeft === "number"
+          ? this.explanation.followUpsLeft
+          : 0;
     } catch (error) {
       this.errorMessage = this.readError(error);
     } finally {
@@ -169,10 +178,41 @@ export default class AdaHelpPanel extends LightningElement {
     }
   }
 
+  async handleFollowUp(event) {
+    if (this.busy || !this.diagnosis) {
+      return;
+    }
+    this.busy = true;
+    this.statusText = "Looking into it…";
+    this.errorMessage = null;
+    try {
+      const answer = await askFollowUp({
+        sessionKey: this.diagnosis.sessionKey,
+        question: event.detail.question
+      });
+      this.followUps = [
+        ...this.followUps,
+        {
+          question: event.detail.question,
+          summary: answer.summary,
+          fixSteps: answer.fixSteps
+        }
+      ];
+      this.followUpsLeft = answer.followUpsLeft;
+    } catch (error) {
+      this.errorMessage = this.readError(error);
+    } finally {
+      this.busy = false;
+      this.statusText = "";
+    }
+  }
+
   handleStartOver() {
     this.errorText = "";
     this.diagnosis = null;
     this.explanation = null;
+    this.followUps = [];
+    this.followUpsLeft = 0;
     this.proposal = null;
     this.confirmResult = null;
     this.feedbackGiven = false;

@@ -6,6 +6,10 @@ export default class AdaDiagnosisCard extends LightningElement {
   @api proposal;
   @api feedbackGiven = false;
   @api busy = false;
+  @api followUpsLeft;
+  @api followUps = [];
+
+  question = "";
 
   @api
   focusHeading() {
@@ -94,6 +98,52 @@ export default class AdaDiagnosisCard extends LightningElement {
     return this.explanation.usedFallback
       ? "Standard guidance (the AI model could not be reached)."
       : "Standard guidance.";
+  }
+
+  get showFollowUps() {
+    return this.isConfident && !!this.explanation;
+  }
+
+  get canAskFollowUp() {
+    return typeof this.followUpsLeft === "number" && this.followUpsLeft > 0;
+  }
+
+  get limitReached() {
+    return typeof this.followUpsLeft === "number" && this.followUpsLeft <= 0;
+  }
+
+  get followUpItems() {
+    const items = Array.isArray(this.followUps) ? this.followUps : [];
+    return items.map((item, index) => {
+      const steps = Array.isArray(item.fixSteps) ? item.fixSteps : [];
+      return {
+        key: `followup-${index}`,
+        question: item.question,
+        summary: item.summary,
+        hasSteps: steps.length > 0,
+        steps: steps.map((text, at) => ({
+          key: `followup-${index}-${at}`,
+          text
+        }))
+      };
+    });
+  }
+
+  get askDisabled() {
+    return this.busy || this.question.trim() === "";
+  }
+
+  handleQuestionChange(event) {
+    this.question = event.detail.value || "";
+  }
+
+  handleAsk() {
+    const question = this.question.trim();
+    if (this.busy || question === "") {
+      return;
+    }
+    this.dispatchEvent(new CustomEvent("followup", { detail: { question } }));
+    this.question = "";
   }
 
   get showFeedback() {

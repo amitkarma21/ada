@@ -174,6 +174,68 @@ describe("c-ada-diagnosis-card", () => {
     expect(q(old, "sources")).toBeNull();
   });
 
+  it("offers a follow-up question after an explanation and sends it trimmed", async () => {
+    const element = build({
+      diagnosis: DIAGNOSIS,
+      explanation: EXPLANATION,
+      followUpsLeft: 3
+    });
+    expect(q(element, "followup-ask").disabled).toBe(true);
+    const input = q(element, "followup-input");
+    input.dispatchEvent(
+      new CustomEvent("change", { detail: { value: "  What do I enter?  " } })
+    );
+    await Promise.resolve();
+    expect(q(element, "followup-ask").disabled).toBe(false);
+    const handler = jest.fn();
+    element.addEventListener("followup", handler);
+    q(element, "followup-ask").click();
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler.mock.calls[0][0].detail).toEqual({
+      question: "What do I enter?"
+    });
+  });
+
+  it("hides the follow-up box when the limit is reached or the answer is unsure", () => {
+    const spent = build({
+      diagnosis: DIAGNOSIS,
+      explanation: EXPLANATION,
+      followUpsLeft: 0
+    });
+    expect(q(spent, "followup-input")).toBeNull();
+    expect(q(spent, "followup-limit")).not.toBeNull();
+    const unsure = build({
+      diagnosis: { ...DIAGNOSIS, confident: false },
+      explanation: EXPLANATION,
+      followUpsLeft: 3
+    });
+    expect(q(unsure, "followup-input")).toBeNull();
+    expect(q(unsure, "followup-limit")).toBeNull();
+  });
+
+  it("shows earlier follow-ups as plain text", () => {
+    const hostile = '<img src=x onerror="window.pwned=3">';
+    const element = build({
+      diagnosis: DIAGNOSIS,
+      explanation: EXPLANATION,
+      followUpsLeft: 2,
+      followUps: [
+        {
+          key: "followup-0",
+          question: hostile,
+          summary: "Enter a date after today.",
+          fixSteps: ["Pick tomorrow."]
+        }
+      ]
+    });
+    expect(q(element, "followup-question").textContent).toBe(hostile);
+    expect(q(element, "followup-answer").textContent).toContain(
+      "Enter a date after today."
+    );
+    expect(element.shadowRoot.querySelector("img")).toBeNull();
+    expect(window.pwned).toBeUndefined();
+  });
+
   it("renders markup from the server as plain text", () => {
     const hostile = '<img src=x onerror="window.pwned=1">';
     const element = build({

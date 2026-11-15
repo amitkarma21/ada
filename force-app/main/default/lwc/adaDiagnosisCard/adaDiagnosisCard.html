@@ -41,6 +41,49 @@
         </template>
       </template>
 
+      <template lwc:if={showFollowUps}>
+        <div class="slds-m-top_small" data-id="followups">
+          <template for:each={followUpItems} for:item="item">
+            <div key={item.key} class="slds-m-bottom_small">
+              <p class="slds-text-title" data-id="followup-question">
+                {item.question}
+              </p>
+              <p data-id="followup-answer">{item.summary}</p>
+              <template lwc:if={item.hasSteps}>
+                <ol class="slds-list_ordered">
+                  <template for:each={item.steps} for:item="step">
+                    <li key={step.key}>{step.text}</li>
+                  </template>
+                </ol>
+              </template>
+            </div>
+          </template>
+          <template lwc:if={canAskFollowUp}>
+            <lightning-input
+              data-id="followup-input"
+              label="Ask a follow-up question"
+              maxlength="500"
+              value={question}
+              onchange={handleQuestionChange}
+            ></lightning-input>
+            <lightning-button
+              class="slds-m-top_x-small"
+              data-id="followup-ask"
+              label="Ask"
+              variant="neutral"
+              disabled={askDisabled}
+              onclick={handleAsk}
+            ></lightning-button>
+          </template>
+          <template lwc:if={limitReached}>
+            <p class="slds-text-color_weak" data-id="followup-limit">
+              No more follow-up questions for this problem. Ask your admin for
+              more help.
+            </p>
+          </template>
+        </div>
+      </template>
+
       <template lwc:if={showFeedback}>
         <div class="slds-m-top_small">
           <template lwc:if={feedbackGiven}>

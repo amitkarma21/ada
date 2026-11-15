@@ -17,6 +17,7 @@ public with sharing class ADA_PayloadBuilder {
     public List<String> missingPermissionLabels = new List<String>();
     public String userQuestion;
     public String locale;
+    public Boolean followUp = false;
   }
 
   // The LLM request body (ARCHITECTURE section 4). Every field the model may see is here;

@@ -680,4 +680,107 @@ private class ADA_AgentControllerTest {
       ADA_AgentController.statusFor(new ADA_ExplanationService.Outcome())
     );
   }
+
+  @IsTest
+  static void aFollowUpSendsTheScrubbedQuestionAndIsLogged() {
+    ADA_LlmTestSupport.Mock mock = ADA_LlmTestSupport.install();
+    ADA_LlmTestSupport.useOpenAi();
+    String key = diagnoseAs('adagt1');
+    ADA_AgentController.ExplanationView view;
+    Test.startTest();
+    System.runAs(userByAlias('adagt1')) {
+      view = ADA_AgentController.askFollowUp(
+        key,
+        'What do I put in Close Date? Mail jane.doe@example.com.au'
+      );
+    }
+    Test.stopTest();
+    Assert.areEqual(1, mock.calls);
+    String body = mock.requests[0].getBody();
+    Assert.isFalse(body.contains('jane.doe'));
+    Assert.isTrue(body.contains('What do I put in Close Date?'), body);
+    Assert.areEqual('LLM', view.source);
+    Assert.areEqual(2, view.followUpsLeft);
+    assertRuleSource(view);
+    ADA_Action_Log__c row = logs('FollowUp')[0];
+    Assert.areEqual(key, row.Session_Key__c);
+    Assert.areEqual('LLM', row.Target_System__c);
+    Assert.areEqual(body, row.Payload_Sent__c);
+    Assert.areEqual(0, logs('Explain').size());
+  }
+
+  @IsTest
+  static void withoutAnAiModelAFollowUpSaysAskYourAdmin() {
+    ADA_LlmTestSupport.useProvider('Template', null);
+    String key = diagnoseAs('adagt1');
+    ADA_AgentController.ExplanationView view;
+    Test.startTest();
+    System.runAs(userByAlias('adagt1')) {
+      view = ADA_AgentController.askFollowUp(
+        key,
+        'What do I put in Close Date?'
+      );
+    }
+    Test.stopTest();
+    Assert.areEqual('Template', view.source);
+    Assert.isTrue(view.summary.contains('admin'), view.summary);
+    Assert.areEqual('None', logs('FollowUp')[0].Target_System__c);
+  }
+
+  @IsTest
+  static void aSessionAllowsThreeFollowUps() {
+    ADA_LlmTestSupport.useProvider('Template', null);
+    String key = diagnoseAs('adagt1');
+    System.runAs(userByAlias('adagt1')) {
+      for (Integer asked = 1; asked <= 3; asked++) {
+        ADA_AgentController.ExplanationView view = ADA_AgentController.askFollowUp(
+          key,
+          'Question ' + asked + '?'
+        );
+        Assert.areEqual(3 - asked, view.followUpsLeft);
+      }
+      try {
+        ADA_AgentController.askFollowUp(key, 'One more?');
+        Assert.fail('The fourth follow-up must be refused');
+      } catch (AuraHandledException e) {
+        Assert.isTrue(e.getMessage().contains('3 follow-up'), e.getMessage());
+      }
+    }
+    Assert.areEqual(3, logs('FollowUp').size());
+  }
+
+  @IsTest
+  static void aFollowUpNeedsAQuestionAndAConfidentDiagnosis() {
+    String key = diagnoseAs('adagt1');
+    System.runAs(userByAlias('adagt1')) {
+      try {
+        ADA_AgentController.askFollowUp(key, '   ');
+        Assert.fail('A blank question must be refused');
+      } catch (AuraHandledException e) {
+        Assert.isTrue(e.getMessage().contains('Type your question'));
+      }
+      String unsure = ADA_AgentController.diagnose(UNMATCHED, OPPORTUNITY_ID)
+        .sessionKey;
+      try {
+        ADA_AgentController.askFollowUp(unsure, 'Why?');
+        Assert.fail('An unsure diagnosis has nothing to follow up on');
+      } catch (AuraHandledException e) {
+        Assert.isTrue(e.getMessage().contains('not sure'));
+      }
+    }
+    Assert.areEqual(0, logs('FollowUp').size());
+  }
+
+  @IsTest
+  static void aSecondUserCannotFollowUpOnTheSession() {
+    String key = diagnoseAs('adagt1');
+    System.runAs(userByAlias('adagt2')) {
+      try {
+        ADA_AgentController.askFollowUp(key, 'Why?');
+        Assert.fail('Another user must be rejected');
+      } catch (AuraHandledException e) {
+        Assert.isTrue(e.getMessage().contains('Session not found'));
+      }
+    }
+  }
 }

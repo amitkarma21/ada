@@ -21,6 +21,11 @@
                 <label>Explain</label>
             </value>
             <value>
+                <fullName>FollowUp</fullName>
+                <default>false</default>
+                <label>FollowUp</label>
+            </value>
+            <value>
                 <fullName>Propose</fullName>
                 <default>false</default>
                 <label>Propose</label>

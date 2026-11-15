@@ -194,4 +194,17 @@ private class ADA_TemplateProviderTest {
       .explain(ADA_Diagnosis.unknown(), null);
     Assert.isTrue(answer.summary.contains('not sure'));
   }
+
+  @IsTest
+  static void aFollowUpWithoutAnAiModelSendsTheUserToTheAdmin() {
+    ADA_PayloadBuilder.Extras extras = new ADA_PayloadBuilder.Extras();
+    extras.followUp = true;
+    extras.userQuestion = 'What do I put in the field?';
+    ADA_Explanation answer = new ADA_TemplateProvider()
+      .explain(ADA_LlmTestSupport.diagnosis(), extras);
+    Assert.areEqual('Template', answer.source);
+    Assert.isTrue(answer.summary.contains('admin'), answer.summary);
+    Assert.isFalse(answer.summary.contains('Close Date Rule'), answer.summary);
+    Assert.isFalse(answer.fixSteps.isEmpty());
+  }
 }

@@ -22,37 +22,37 @@ User ── adaHelpPanel (LWC, utility bar)
 
 ### Objects and metadata
 
-| Component | Purpose | Key fields |
-| --- | --- | --- |
-| `ADA_Metadata_Index__c` | Cached index of org metadata used for matching. Metadata only, never record data | `Object_Api_Name__c`, `Component_Type__c` (ValidationRule, RequiredField, Flow, ApexTrigger, DuplicateRule), `Api_Name__c`, `Label__c`, `Description__c`, `Message_Template__c`, `Message_Normalised__c`, `Formula_Masked__c`, `Field_Api_Names__c`, `Active__c`, `Source_Last_Modified__c`, `Indexed_At__c`, `Explanation_Json__c`, `Explained_For__c` (explanation cache, step 1.6), `Flow_Runs_When__c` (when a flow runs, in words, step 2.5.2) |
-| `ADA_Action_Log__c` | Audit and ROI log, one row per step | `Session_Key__c`, `Step__c` (Diagnose, Explain, Propose, Confirm, Act, Feedback), `Error_Type__c`, `Component_Api_Name__c`, `Confidence__c`, `Target_System__c` (None, LLM, AzureDevOps, ServiceNow, Email), `Payload_Sent__c` (long text, the exact body), `Result__c`, `External_Id__c`, `External_Url__c`, `Status__c`, `Idempotency_Key__c` (unique), `Feedback__c` (Solved, Not solved) |
-| `ADA_Access_Request__c` | Access request that goes through email approval | `Permission_Set_Group__c` (API name), `Permission_Label__c`, `Justification__c` (PII-gated), `Status__c` (Draft, Submitted, Approved, Rejected, Fulfilled), `Approver__c`, `Session_Key__c`, `ServiceNow_Number__c` |
-| `ADA_Setting__mdt` | One `Default` record | `LLM_Provider__c` (Template, OpenAICompatible, Anthropic), `LLM_Model__c`, `LLM_Timeout_Ms__c`, `Confidence_Threshold__c` (default 0.8), `Bug_Report_Email__c`, `ADO_Enabled__c`, `ADO_Project__c`, `ADO_Area_Path__c`, `ADO_Work_Item_Type__c` (Bug), `ServiceNow_Enabled__c`, `ServiceNow_Catalog_Item__c`, `Default_Approver_Username__c` |
-| `ADA_Allowed_Permission__mdt` | Permission set groups ADA may suggest | `Permission_Set_Group__c`, `Grants_Object__c`, `Grants_Field__c`, `Risk__c` (Low, Medium) |
-| `ADA_Pii_Pattern__mdt` | Regex patterns the PII gate blocks | `Regex__c`, `Active__c`, `Description__c` |
+| Component                     | Purpose                                                                          | Key fields                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ADA_Metadata_Index__c`       | Cached index of org metadata used for matching. Metadata only, never record data | `Object_Api_Name__c`, `Component_Type__c` (ValidationRule, RequiredField, Flow, ApexTrigger, DuplicateRule), `Api_Name__c`, `Label__c`, `Description__c`, `Message_Template__c`, `Message_Normalised__c`, `Formula_Masked__c`, `Field_Api_Names__c`, `Active__c`, `Source_Last_Modified__c`, `Indexed_At__c`, `Explanation_Json__c`, `Explained_For__c` (explanation cache, step 1.6), `Flow_Runs_When__c` (when a flow runs, in words, step 2.5.2) |
+| `ADA_Action_Log__c`           | Audit and ROI log, one row per step                                              | `Session_Key__c`, `Step__c` (Diagnose, Explain, FollowUp, Propose, Confirm, Act, Feedback), `Error_Type__c`, `Component_Api_Name__c`, `Confidence__c`, `Target_System__c` (None, LLM, AzureDevOps, ServiceNow, Email), `Payload_Sent__c` (long text, the exact body), `Result__c`, `External_Id__c`, `External_Url__c`, `Status__c`, `Idempotency_Key__c` (unique), `Feedback__c` (Solved, Not solved)                                              |
+| `ADA_Access_Request__c`       | Access request that goes through email approval                                  | `Permission_Set_Group__c` (API name), `Permission_Label__c`, `Justification__c` (PII-gated), `Status__c` (Draft, Submitted, Approved, Rejected, Fulfilled), `Approver__c`, `Session_Key__c`, `ServiceNow_Number__c`                                                                                                                                                                                                                                 |
+| `ADA_Setting__mdt`            | One `Default` record                                                             | `LLM_Provider__c` (Template, OpenAICompatible, Anthropic), `LLM_Model__c`, `LLM_Timeout_Ms__c`, `Confidence_Threshold__c` (default 0.8), `Bug_Report_Email__c`, `ADO_Enabled__c`, `ADO_Project__c`, `ADO_Area_Path__c`, `ADO_Work_Item_Type__c` (Bug), `ServiceNow_Enabled__c`, `ServiceNow_Catalog_Item__c`, `Default_Approver_Username__c`                                                                                                        |
+| `ADA_Allowed_Permission__mdt` | Permission set groups ADA may suggest                                            | `Permission_Set_Group__c`, `Grants_Object__c`, `Grants_Field__c`, `Risk__c` (Low, Medium)                                                                                                                                                                                                                                                                                                                                                           |
+| `ADA_Pii_Pattern__mdt`        | Regex patterns the PII gate blocks                                               | `Regex__c`, `Active__c`, `Description__c`                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 ### Named Credentials (packaged; the customer fills in secrets after install)
 
-| Name | Calls | Auth during build | Auth for customers |
-| --- | --- | --- | --- |
-| `ADA_Self_Tooling` | The org's own Tooling API | OAuth via a Salesforce auth provider (one click per org) | Same, set up by the install wizard |
-| `ADA_LLM` | OpenAI-compatible chat completions endpoint | Groq API key as a custom header | Customer's own provider key |
-| `ADA_AzureDevOps` | `https://dev.azure.com/{org}` REST API | Personal access token | Per-user OAuth (Entra ID) before listing |
-| `ADA_ServiceNow` | ServiceNow Service Catalog API (optional) | Basic auth on the free developer instance | OAuth |
+| Name               | Calls                                       | Auth during build                                        | Auth for customers                       |
+| ------------------ | ------------------------------------------- | -------------------------------------------------------- | ---------------------------------------- |
+| `ADA_Self_Tooling` | The org's own Tooling API                   | OAuth via a Salesforce auth provider (one click per org) | Same, set up by the install wizard       |
+| `ADA_LLM`          | OpenAI-compatible chat completions endpoint | Groq API key as a custom header                          | Customer's own provider key              |
+| `ADA_AzureDevOps`  | `https://dev.azure.com/{org}` REST API      | Personal access token                                    | Per-user OAuth (Entra ID) before listing |
+| `ADA_ServiceNow`   | ServiceNow Service Catalog API (optional)   | Basic auth on the free developer instance                | OAuth                                    |
 
 If a packaged Named Credential's URL can't be changed by subscribers, ship one Named Credential
 per supported LLM provider instead (decide in step 1.6, record in DECISIONS).
 
 ### Apex, by layer
 
-| Layer | Classes |
-| --- | --- |
-| Entry | `ADA_AgentController` (`@AuraEnabled` API), `ADA_AgentSession` (state machine) |
+| Layer     | Classes                                                                                                                                                                                                                                                                           |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Entry     | `ADA_AgentController` (`@AuraEnabled` API), `ADA_AgentSession` (state machine)                                                                                                                                                                                                    |
 | Diagnosis | `ADA_DiagnosisService`, `ADA_ErrorClassifier`, `ADA_MessageNormaliser`, matchers: `ADA_ValidationRuleMatcher`, `ADA_RequiredFieldMatcher`, `ADA_AccessChecker`, `ADA_DuplicateRuleMatcher`, `ADA_FlowErrorMatcher`, `ADA_ApexErrorMatcher`; DTOs `ADA_Diagnosis`, `ADA_ErrorType` |
-| Index | `ADA_IMetadataIndexStore`, `ADA_ObjectIndexStore`, `ADA_ToolingClient`, `ADA_FormulaMasker`, `ADA_MetadataIndexJob` (Schedulable + Queueable chain) |
-| LLM | `ADA_ILlmProvider`, `ADA_TemplateProvider`, `ADA_OpenAiCompatibleProvider`, `ADA_LlmProviderFactory`, `ADA_PromptBuilder`, `ADA_LlmResponseValidator`, `ADA_ExplanationCache` |
-| Safety | `ADA_PiiGate`, `ADA_PayloadBuilder` (one typed builder per target), `ADA_HttpGateway` (the only class that sends `HttpRequest`) |
-| Actions | `ADA_IActionTarget`, `ADA_EmailTarget`, `ADA_AzureDevOpsTarget` (parked, D-16), `ADA_AccessRequestService`, `ADA_ServiceNowTarget` (optional), `ADA_ActionLogger` |
+| Index     | `ADA_IMetadataIndexStore`, `ADA_ObjectIndexStore`, `ADA_ToolingClient`, `ADA_FormulaMasker`, `ADA_MetadataIndexJob` (Schedulable + Queueable chain)                                                                                                                               |
+| LLM       | `ADA_ILlmProvider`, `ADA_TemplateProvider`, `ADA_OpenAiCompatibleProvider`, `ADA_LlmProviderFactory`, `ADA_PromptBuilder`, `ADA_LlmResponseValidator`, `ADA_ExplanationCache`                                                                                                     |
+| Safety    | `ADA_PiiGate`, `ADA_PayloadBuilder` (one typed builder per target), `ADA_HttpGateway` (the only class that sends `HttpRequest`)                                                                                                                                                   |
+| Actions   | `ADA_IActionTarget`, `ADA_EmailTarget`, `ADA_AzureDevOpsTarget` (parked, D-16), `ADA_AccessRequestService`, `ADA_ServiceNowTarget` (optional), `ADA_ActionLogger`                                                                                                                 |
 
 ### LWC and permissions
 
@@ -94,15 +94,15 @@ you" and offers `RAISE_BUG` with the raw context. Never guess.
 
 Matchers run in this order; the first confident match wins, ties lower the confidence.
 
-| Order | Type | Signal | Source |
-| --- | --- | --- | --- |
-| 1 | Required field | Platform's required-fields message; field label(s) parsed | Schema describe |
-| 2 | Validation rule | Normalised error text equals or closely matches an index message for the record's object | Index (Tooling `ValidationRule`) |
-| 3 | Duplicate rule | Duplicate-alert message; active duplicate rules on the object | Index |
-| 4 | Access | Insufficient-access message, or field/object not updateable for this user | `Schema` describe in user context, `UserRecordAccess` |
-| 5 | Flow | Flow error text, or a match to an indexed flow custom-error message | Index |
-| 6 | Apex | Message literal found in an indexed trigger/class body | Index |
-| 7 | Unknown | Nothing matched | — |
+| Order | Type            | Signal                                                                                   | Source                                                |
+| ----- | --------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| 1     | Required field  | Platform's required-fields message; field label(s) parsed                                | Schema describe                                       |
+| 2     | Validation rule | Normalised error text equals or closely matches an index message for the record's object | Index (Tooling `ValidationRule`)                      |
+| 3     | Duplicate rule  | Duplicate-alert message; active duplicate rules on the object                            | Index                                                 |
+| 4     | Access          | Insufficient-access message, or field/object not updateable for this user                | `Schema` describe in user context, `UserRecordAccess` |
+| 5     | Flow            | Flow error text, or a match to an indexed flow custom-error message                      | Index                                                 |
+| 6     | Apex            | Message literal found in an indexed trigger/class body                                   | Index                                                 |
+| 7     | Unknown         | Nothing matched                                                                          | —                                                     |
 
 Notes for the build:
 
@@ -123,18 +123,23 @@ payload builder. Nothing else may add fields.
 
 **To the LLM** — request body:
 
-| Field | Content |
-| --- | --- |
-| `errorType` | Enum value |
-| `objectApiName`, `objectLabel` | Metadata |
-| `componentType`, `componentApiName`, `componentLabel`, `componentDescription` | Metadata, after the PII gate |
-| `conditionFormulaMasked` | Formula with every string literal replaced by `TEXT_n` and every 15/18-character ID by `ID_n` |
-| `ruleMessage` | The error message as the admin wrote it in metadata (never a rendered message), after the PII gate, ≤ 500 chars |
-| `flowRunsWhen` | For a flow, when it starts, chosen from a fixed list of phrases (for example "before a record is saved"); no record values |
-| `fieldLabels` | Labels of fields involved |
-| `missingPermissionLabels` | Permission set group labels |
-| `userQuestion` | The user's own words after the PII gate (optional) |
-| `locale` | User locale |
+| Field                                                                         | Content                                                                                                                    |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `errorType`                                                                   | Enum value                                                                                                                 |
+| `objectApiName`, `objectLabel`                                                | Metadata                                                                                                                   |
+| `componentType`, `componentApiName`, `componentLabel`, `componentDescription` | Metadata, after the PII gate                                                                                               |
+| `conditionFormulaMasked`                                                      | Formula with every string literal replaced by `TEXT_n` and every 15/18-character ID by `ID_n`                              |
+| `ruleMessage`                                                                 | The error message as the admin wrote it in metadata (never a rendered message), after the PII gate, ≤ 500 chars            |
+| `flowRunsWhen`                                                                | For a flow, when it starts, chosen from a fixed list of phrases (for example "before a record is saved"); no record values |
+| `fieldLabels`                                                                 | Labels of fields involved                                                                                                  |
+| `missingPermissionLabels`                                                     | Permission set group labels                                                                                                |
+| `userQuestion`                                                                | The user's own words after the PII gate (optional)                                                                         |
+| `locale`                                                                      | User locale                                                                                                                |
+
+A follow-up question (at most 3 per session, each logged as step `FollowUp`) travels in the same
+`userQuestion` field, through the same builder and PII gate and the same length limit. No new field
+is sent. `Extras.followUp` is internal: it tells the Template provider to answer "ask your admin"
+and keeps the explanation cache out of the path. It is not in the request body.
 
 The system prompt is a static resource in the package. The model must return JSON:
 `{"explanation": string ≤ 1200 chars, "fixSteps": string[] ≤ 5, "suggestedAction": "NONE" | "RAISE_BUG" | "REQUEST_ACCESS"}`.
