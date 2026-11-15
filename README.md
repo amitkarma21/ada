@@ -160,3 +160,7 @@ break (no record values out, one gateway for HTTP, callouts only through Named C
 - Errors built at runtime inside Apex or a managed package, with no matching message in metadata, come
   back as "not sure". That is deliberate.
 - Free LLM tiers have rate limits and terms that change.
+
+## Licence
+
+[MIT](LICENSE).
