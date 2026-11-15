@@ -27,7 +27,8 @@ Actions secrets only.
 
 ## 3. GitHub
 
-1. Create a private repo (for example `ada`), copy this kit into it, push.
+1. Fork or clone the repo. For a fresh install in a Developer Edition org, follow the
+   [README](../README.md) instead; this page is the maintainer's checklist for the whole build.
 2. For CI's org jobs (optional until phase 1 ends), create a certificate and an External Client
    App in the Dev Hub for JWT login, then add repo secrets `SF_DEVHUB_USERNAME`,
    `SF_DEVHUB_CLIENT_ID` and `SF_DEVHUB_JWT_KEY` (the private key text). Claude Code can walk

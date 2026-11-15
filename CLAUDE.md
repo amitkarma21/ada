@@ -71,19 +71,19 @@ The `/next-step` skill runs this loop; follow it even when not invoked.
 
 ## Commands
 
-| What | Command |
-| --- | --- |
-| Static checks (no org) | `scripts/verify.sh static` |
-| Deploy + Apex/LWC tests + coverage | `scripts/verify.sh unit` |
-| Unit + golden-set accuracy + egress canary | `scripts/verify.sh e2e` |
+| What                                                 | Command                         |
+| ---------------------------------------------------- | ------------------------------- |
+| Static checks (no org)                               | `scripts/verify.sh static`      |
+| Deploy + Apex/LWC tests + coverage                   | `scripts/verify.sh unit`        |
+| Unit + golden-set accuracy + egress canary           | `scripts/verify.sh e2e`         |
 | E2E + live calls to Groq / Azure DevOps / ServiceNow | `LIVE=1 scripts/verify.sh live` |
-| Package version + install smoke test | `scripts/verify.sh package` |
-| Deploy + seed the dev org | `scripts/setup-dev-org.sh` |
-| New scratch org (CI and phase 4 install test only) | `scripts/new-scratch-org.sh` |
+| Package version + install smoke test                 | `scripts/verify.sh package`     |
+| Deploy + seed the dev org                            | `scripts/setup-dev-org.sh`      |
+| New scratch org (CI and phase 4 install test only)   | `scripts/new-scratch-org.sh`    |
 
 ### Environment notes (this machine)
 
-- Run everything from the repo root (`/Users/oitcuser/Documents/ada`). A shell started elsewhere
+- Run everything from the repo root. A shell started elsewhere
   fails with "not a valid Salesforce DX project".
 - `gh` lives in `~/.local/bin`: prefix commands with `export PATH="$HOME/.local/bin:$PATH"`.
 - Local npm 10 crashes resolving `@salesforce/sfdx-lwc-jest`. Install packages with
@@ -117,4 +117,4 @@ Gate logs land in `.verify/<timestamp>-<gate>/`; one summary line per run is app
   `System.runAs` for permission cases. Target ≥ 85% coverage per class (package minimum is 75%).
 - No `System.debug` left in package code except the golden harness marker.
 - API version: use the latest the CLI supports; keep it the same across the project.
-- Keep files small; prefer clear code over clever code. Comments explain *why*.
+- Keep files small; prefer clear code over clever code. Comments explain _why_.

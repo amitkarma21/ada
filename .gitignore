@@ -16,3 +16,6 @@ coverage/
 server.key
 
 setup/rendered/
+
+# Editor settings
+.vscode/
