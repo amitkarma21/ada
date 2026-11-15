@@ -68,5 +68,13 @@ if [[ -n "$leaks" ]]; then
   echo "$leaks"
 fi
 
+# 9. The anonymous error sample is for admins only: only the admin report type and the admin
+# report folder may read it.
+sample_leaks="$(grep -rlE "Error_Sample__c" "$PKG/main/default/reports" "$PKG/main/default/reportTypes" "$PKG/main/default/dashboards" 2>/dev/null | grep -vE "reportTypes/ADA_Unknown_Errors\.reportType-meta\.xml|reports/ADA_Admin_Reports/" || true)"
+if [[ -n "$sample_leaks" ]]; then
+  report "A shared report, report type or dashboard reads Error_Sample__c:"
+  echo "$sample_leaks"
+fi
+
 [[ "$fail" == 0 ]] && echo "All invariant checks passed."
 exit "$fail"

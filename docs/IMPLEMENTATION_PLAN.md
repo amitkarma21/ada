@@ -253,6 +253,38 @@ explained; open the dashboard.
 
 ---
 
+## Phase 2.6 — Learning from what ADA cannot answer (Slice 2)
+
+### 2.6.1 Unknown-error queue
+When ADA is not confident, keep a scrubbed sample of the error so an admin can see what people
+ask that ADA cannot yet explain, and fix the gap (a rule label, a message, a matcher).
+**Acceptance:**
+- A not-confident Diagnose row stores `Error_Sample__c`: PII-scrubbed, normalised, digits removed, at most 200 characters. A confident row stores none.
+- The sample is never sent to the LLM or any report/dashboard in the analytics set; only `ADA_Admin` and the row owner can read it.
+- A list view and a report grouped by sample show repeats; a static check keeps the field out of every other report.
+- Decision recorded (D-17): this is the first time error text is kept, in scrubbed form.
+**Gate:** `e2e`.
+
+### 2.6.2 Cited answers
+Each explanation shows what it is based on (rule or flow name, type, last modified) so the reader
+can check it. No new data leaves the org.
+**Acceptance:**
+- The explanation view carries a `sources` list built from the diagnosis and index row, shown in the panel; the Template and LLM paths both fill it.
+- Jest test for the list; Apex test for the contents.
+**Gate:** `e2e`.
+
+### 2.6.3 Follow-up questions
+After an explanation the user can ask a short follow-up ("what do I put in the field?"), answered
+from the same masked facts, not a free chat.
+**Acceptance:**
+- Follow-up goes through `ADA_PayloadBuilder` (the contract changes with the canary tests); the question is PII-scrubbed and clipped; Template provider answers "ask your admin" when it cannot help.
+- At most 3 follow-ups per session; each is logged.
+**Gate:** `e2e`.
+
+**Slice 2 gate:** stop for human review.
+
+---
+
 ## Phase 3 — Request access, approved by email
 
 ### 3.1 Access checker and allowlist — security

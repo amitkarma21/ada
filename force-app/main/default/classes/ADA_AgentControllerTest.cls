@@ -86,6 +86,7 @@ private class ADA_AgentControllerTest {
         Component_Api_Name__c,
         Object_Api_Name__c,
         Confidence__c,
+        Error_Sample__c,
         Session_Key__c
       FROM ADA_Action_Log__c
       WHERE Step__c = :step
@@ -277,6 +278,34 @@ private class ADA_AgentControllerTest {
     ADA_Action_Log__c explain = logs('Explain')[0];
     Assert.areEqual('None', explain.Target_System__c);
     Assert.isNull(explain.Payload_Sent__c);
+    Assert.areEqual(
+      'something odd happened that no rule explains',
+      logs('Diagnose')[0].Error_Sample__c
+    );
+  }
+
+  @IsTest
+  static void aConfidentAnswerKeepsNoSampleOfTheError() {
+    System.runAs(userByAlias('adagt1')) {
+      ADA_AgentController.diagnose(RULE_MESSAGE, OPPORTUNITY_ID);
+    }
+    ADA_Action_Log__c diagnose = logs('Diagnose')[0];
+    Assert.areEqual('VALIDATION_RULE', diagnose.Error_Type__c);
+    Assert.isNull(diagnose.Error_Sample__c);
+  }
+
+  @IsTest
+  static void theSampleOfAnUnknownErrorHasNoPersonalData() {
+    System.runAs(userByAlias('adagt1')) {
+      ADA_AgentController.diagnose(
+        'Odd failure for jane.citizen@mail.example.com.au amount 98765',
+        OPPORTUNITY_ID
+      );
+    }
+    String sample = logs('Diagnose')[0].Error_Sample__c;
+    Assert.isNotNull(sample);
+    Assert.isFalse(sample.contains('jane'));
+    Assert.isFalse(sample.contains('98765'));
   }
 
   @IsTest

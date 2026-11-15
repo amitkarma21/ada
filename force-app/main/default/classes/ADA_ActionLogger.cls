@@ -20,6 +20,7 @@ public with sharing class ADA_ActionLogger {
     public String status = 'Success';
     public String idempotencyKey;
     public String feedback;
+    public String errorSample;
   }
 
   // The only writer of ADA_Action_Log__c. Users have no create permission on the log,
@@ -86,7 +87,8 @@ public with sharing class ADA_ActionLogger {
         External_Url__c = entry.externalUrl,
         Status__c = entry.status,
         Idempotency_Key__c = entry.idempotencyKey,
-        Feedback__c = entry.feedback
+        Feedback__c = entry.feedback,
+        Error_Sample__c = entry.errorSample
       );
       Database.insert(row, true, AccessLevel.SYSTEM_MODE);
       return row;

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ReportType xmlns="http://soap.sforce.com/2006/04/metadata">
+    <baseObject>ADA_Action_Log__c</baseObject>
+    <category>other</category>
+    <deployed>true</deployed>
+    <description
+  >Errors ADA was not sure about, with the anonymous error sample. For admins only.</description>
+    <label>ADA Unknown Errors</label>
+    <sections>
+        <masterLabel>ADA Unknown Error</masterLabel>
+        <columns>
+            <checkedByDefault>false</checkedByDefault>
+            <field>Name</field>
+            <table>ADA_Action_Log__c</table>
+        </columns>
+        <columns>
+            <checkedByDefault>false</checkedByDefault>
+            <field>CreatedDate</field>
+            <table>ADA_Action_Log__c</table>
+        </columns>
+        <columns>
+            <checkedByDefault>false</checkedByDefault>
+            <field>Step__c</field>
+            <table>ADA_Action_Log__c</table>
+        </columns>
+        <columns>
+            <checkedByDefault>false</checkedByDefault>
+            <field>Error_Type__c</field>
+            <table>ADA_Action_Log__c</table>
+        </columns>
+        <columns>
+            <checkedByDefault>false</checkedByDefault>
+            <field>Object_Api_Name__c</field>
+            <table>ADA_Action_Log__c</table>
+        </columns>
+        <columns>
+            <checkedByDefault>false</checkedByDefault>
+            <field>Error_Sample__c</field>
+            <table>ADA_Action_Log__c</table>
+        </columns>
+        <columns>
+            <checkedByDefault>false</checkedByDefault>
+            <field>Unknown_Count__c</field>
+            <table>ADA_Action_Log__c</table>
+        </columns>
+    </sections>
+</ReportType>

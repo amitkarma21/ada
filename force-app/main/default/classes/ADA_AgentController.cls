@@ -101,9 +101,12 @@ public with sharing class ADA_AgentController {
     String key = ADA_AgentSession.newKey();
     ADA_ActionLogger.Entry entry = entryFor(key, diagnosis, 'Diagnose');
     entry.result = ADA_AgentSession.snapshot(diagnosis);
+    Boolean confident = isConfident(diagnosis);
+    if (!confident) {
+      entry.errorSample = ADA_ErrorSampler.sample(errorText);
+    }
     ADA_ActionLogger.write(entry);
 
-    Boolean confident = isConfident(diagnosis);
     DiagnosisView view = new DiagnosisView();
     view.sessionKey = key;
     view.errorType = diagnosis.errorType.name();

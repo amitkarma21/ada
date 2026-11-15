@@ -147,6 +147,28 @@ private class ADA_PermissionsTest {
   }
 
   @IsTest
+  static void onlyAdminAndTheOwnerCanReadTheErrorSample() {
+    System.runAs(userByAlias('adaana')) {
+      Assert.isFalse(
+        Schema.SObjectType.ADA_Action_Log__c.fields.Error_Sample__c.isAccessible()
+      );
+    }
+    System.runAs(userByAlias('adau1')) {
+      Assert.isTrue(
+        Schema.SObjectType.ADA_Action_Log__c.fields.Error_Sample__c.isAccessible()
+      );
+      Assert.isFalse(
+        Schema.SObjectType.ADA_Action_Log__c.fields.Error_Sample__c.isUpdateable()
+      );
+    }
+    System.runAs(userByAlias('adaadm')) {
+      Assert.isTrue(
+        Schema.SObjectType.ADA_Action_Log__c.fields.Error_Sample__c.isAccessible()
+      );
+    }
+  }
+
+  @IsTest
   static void userCannotEditLogsOrApprovalFields() {
     System.runAs(userByAlias('adau1')) {
       Assert.isFalse(Schema.SObjectType.ADA_Action_Log__c.isCreateable());
